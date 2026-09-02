@@ -184,6 +184,13 @@ enum MobileFixes {
       padding-top: 0 !important;
       min-height: 0 !important;
     }
+    /* Header/parent switcher above Student Details (.dd1 is white-on-dark). */
+    body.cmms-logged-in .dd1,
+    body.cmms-logged-in .header .user-box,
+    body.cmms-logged-in .header .dropdown,
+    body.cmms-logged-in .header-right .dropdown {
+      display: none !important;
+    }
 
     .cmms-student-banner {
       background: #005bab !important;
@@ -237,45 +244,59 @@ enum MobileFixes {
     }
   }
 
-  function menuWrap(el) {
-    return el.closest(".user_right, .header-right, .user-con, .user-box, .dd1") || el;
+  function findCutoffTop() {
+    var nodes = document.querySelectorAll("h1, h2, h3, h4, h5, div, span, p, label, strong, a, button");
+    for (var i = 0; i < nodes.length; i++) {
+      var t = (nodes[i].textContent || "").replace(/\s+/g, " ").trim();
+      if (t === "Student Details" || t === "Dashboard" || t === "Check In / Out") {
+        return nodes[i].getBoundingClientRect().top;
+      }
+    }
+    return 96;
   }
 
-  function hideDuplicateUserMenus() {
-    var nodes = document.querySelectorAll(".user-con, .dd1, .user-box");
-    var groups = {};
+  function hideBar(el) {
+    var bar = el.closest(".user_right, .header-right, .user-con, .user-box, .dd1, .dropdown") || el;
+    for (var i = 0; i < 6 && bar.parentElement; i++) {
+      var parent = bar.parentElement;
+      if (!parent || parent === document.body || parent.id === "wrapper" || parent.classList.contains("wrap-pad")) break;
+      var pr = parent.getBoundingClientRect();
+      var er = bar.getBoundingClientRect();
+      if (pr.width > window.innerWidth * 0.85 && pr.height <= Math.max(er.height + 24, 120)) {
+        bar = parent;
+      } else {
+        break;
+      }
+    }
+    bar.classList.add("cmms-dup-user");
+  }
+
+  function hideTopUserDropdown() {
+    var cutoff = findCutoffTop();
+    var nodes = document.querySelectorAll(".user-con, .dd1, .user-box, .dropdown, button.dropdown-toggle, .header button, .header a");
+    var seen = [];
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
-      if (el.closest(".cmms-dup-user")) continue;
+      if (el.closest(".bg-signin, #frmtlogin, .cmms-dup-user, .dropdown-menu, .lnb, .bg-lnb")) continue;
       var text = (el.innerText || "").replace(/\s+/g, " ").trim();
-      if (!text) continue;
-      var key = text.slice(0, 48);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push({
-        el: el,
-        top: el.getBoundingClientRect().top
-      });
+      var known = el.matches(".user-con, .dd1, .user-box") || !!el.closest(".user-con, .dd1, .user-box");
+      var hasCaret = /▼|▾|▼/.test(text) || !!el.querySelector(".caret, .fa-caret-down, .glyphicon-chevron-down");
+      var hasAvatar = !!el.querySelector("img, .imgbox1, .user-pic");
+      if (!known && !(hasCaret && text.length > 2 && text.length < 60) && !hasAvatar) continue;
+      var top = el.getBoundingClientRect().top;
+      if (top >= cutoff - 4) continue;
+      var wrap = el.closest(".user-con, .dd1, .user-box, .user_right, .header-right, .dropdown") || el;
+      if (seen.indexOf(wrap) !== -1) continue;
+      seen.push(wrap);
+      hideBar(wrap);
     }
-    Object.keys(groups).forEach(function (key) {
-      var list = groups[key];
-      if (list.length < 2) return;
-      list.sort(function (a, b) { return a.top - b.top; });
-      var keep = list[list.length - 1];
-      for (var i = 0; i < list.length - 1; i++) {
-        var wrap = menuWrap(list[i].el);
-        wrap.classList.add("cmms-dup-user");
-      }
-      var keepWrap = menuWrap(keep.el);
-      keepWrap.classList.remove("cmms-dup-user");
-      keepWrap.style.removeProperty("display");
-    });
 
     var headers = document.querySelectorAll(".header, .header-right");
     for (var h = 0; h < headers.length; h++) {
       var header = headers[h];
-      if (!header.querySelector(".cmms-dup-user")) continue;
       var leftover = header.querySelector(".user-con:not(.cmms-dup-user), .dd1:not(.cmms-dup-user), .user-box:not(.cmms-dup-user)");
-      if (!leftover) header.classList.add("cmms-dup-user");
+      var keepContent = /Student Details|Dashboard|Check In/.test(header.innerText || "");
+      if (header.querySelector(".cmms-dup-user") && !leftover && !keepContent) header.classList.add("cmms-dup-user");
     }
   }
 
@@ -340,7 +361,7 @@ enum MobileFixes {
 
   function run() {
     ensureViewport();
-    hideDuplicateUserMenus();
+    hideTopUserDropdown();
     stripBannerBackground();
     enlargeTaps();
     hookLoginForm();

@@ -47,7 +47,20 @@ struct PortalScreen: View {
 
             Spacer()
 
-            if model.isLoading {
+            if model.showFaceIDButton {
+                Button {
+                    Task { await model.unlockWithFaceID() }
+                } label: {
+                    Image(systemName: model.isAuthenticating ? "faceid" : "faceid")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 36, height: 36)
+                        .opacity(model.isAuthenticating ? 0.5 : 1)
+                }
+                .disabled(model.isAuthenticating)
+                .accessibilityLabel("Sign in with Face ID")
+            }
+
+            if model.isLoading || model.isAuthenticating {
                 ProgressView()
                     .tint(.white)
                     .frame(width: 36, height: 36)

@@ -20,6 +20,7 @@ struct PortalWebView: UIViewRepresentable {
         config.allowsInlineMediaPlayback = true
         config.websiteDataStore = .default()
         config.userContentController.addUserScript(js)
+        config.userContentController.add(context.coordinator, name: "cmmsAuth")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -44,12 +45,28 @@ struct PortalWebView: UIViewRepresentable {
         model.webView = uiView
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         let model: PortalModel
         weak var webView: WKWebView?
 
         init(model: PortalModel) {
             self.model = model
+        }
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == "cmmsAuth",
+                  let body = message.body as? [String: Any],
+                  let type = body["type"] as? String
+            else { return }
+            if type == "save",
+               let username = body["username"] as? String,
+               let password = body["password"] as? String
+            {
+                FaceIDAuth.save(username: username, password: password)
+                Task { @MainActor in
+                    model.showFaceIDButton = FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate
+                }
+            }
         }
 
         @objc func pullToRefresh(_ control: UIRefreshControl) {
@@ -81,8 +98,8 @@ struct PortalWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.evaluateJavaScript(MobileFixes.javaScript, completionHandler: nil)
             Task { @MainActor in
-                model.sync(from: webView)
                 model.isLoading = false
+                model.pageFinished(in: webView)
             }
         }
 

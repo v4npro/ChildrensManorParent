@@ -5,9 +5,6 @@ enum MobileFixes {
     /// without posting credentials anywhere except the school's own origin.
     static let javaScript = #"""
 (function () {
-  if (window.__cmmsMobileFixes) return;
-  window.__cmmsMobileFixes = true;
-
   var css = `
     html { -webkit-text-size-adjust: 100%; }
     body, html { min-width: 0 !important; max-width: 100% !important; overflow-x: hidden !important; }
@@ -150,21 +147,77 @@ enum MobileFixes {
     .breadcrumb { font-size: 13px !important; }
     .topbar { padding-left: 8px !important; padding-right: 8px !important; }
 
-    /* Sidr hamburger drawer, if the portal enables it */
     .sidr { max-width: 86vw !important; }
 
-    /* Keep payment / calendar widgets usable */
     iframe, .webcam_iframe, .iframe1 {
       max-width: 100% !important;
       width: 100% !important;
     }
+
+    /* Logged-in: kill the full-bleed watermark so it cannot sit across the black + blue bands */
+    body.cmms-logged-in #background_cycler,
+    body.cmms-logged-in #background_cycler img {
+      display: none !important;
+      visibility: hidden !important;
+    }
+    body.cmms-logged-in,
+    body.cmms-logged-in .bg-parent,
+    body.cmms-logged-in .bg-staff,
+    body.cmms-logged-in .bg-homepage,
+    body.cmms-logged-in .bg-parent-poral,
+    body.cmms-logged-in .bg-gray,
+    body.cmms-logged-in .header,
+    body.cmms-logged-in .wrap-pad {
+      background-image: none !important;
+    }
+
+    .cmms-user-bar {
+      background: #111 !important;
+      background-image: none !important;
+      color: #fff !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      float: none !important;
+      margin: 0 !important;
+      padding: 10px 12px !important;
+      box-sizing: border-box !important;
+      text-align: center !important;
+      position: relative !important;
+      z-index: 5 !important;
+    }
+    .cmms-user-bar .dropdown button,
+    .cmms-user-bar .btn,
+    .cmms-user-bar a {
+      color: #fff !important;
+    }
+    .cmms-dup-user { display: none !important; }
+
+    .cmms-student-banner {
+      background: #005bab !important;
+      background-image: none !important;
+      color: #fff !important;
+      position: relative !important;
+      z-index: 4 !important;
+      padding: 16px 16px 20px !important;
+      overflow: hidden !important;
+    }
+    .cmms-student-banner, .cmms-student-banner * {
+      background-image: none !important;
+    }
   `;
 
-  var style = document.createElement("style");
-  style.id = "cmms-mobile-fixes";
-  style.type = "text/css";
-  style.appendChild(document.createTextNode(css));
-  (document.head || document.documentElement).appendChild(style);
+  var style = document.getElementById("cmms-mobile-fixes");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "cmms-mobile-fixes";
+    style.type = "text/css";
+    (document.head || document.documentElement).appendChild(style);
+  }
+  style.textContent = css;
+
+  function isLoginPage() {
+    return !!document.getElementById("frmtlogin") || /\/login\/?$/i.test(location.pathname);
+  }
 
   function ensureViewport() {
     var meta = document.querySelector('meta[name="viewport"]');
@@ -178,7 +231,6 @@ enum MobileFixes {
       "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
     );
   }
-  ensureViewport();
 
   function enlargeTaps() {
     var nodes = document.querySelectorAll("a, button, input[type=submit], .btn");
@@ -192,11 +244,124 @@ enum MobileFixes {
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", enlargeTaps);
-  } else {
+  function hideDuplicateUserMenus() {
+    var nodes = document.querySelectorAll(".user-con, .dd1, .user-box");
+    var seen = {};
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var text = (el.innerText || "").replace(/\s+/g, " ").trim();
+      if (!text) continue;
+      var key = text.slice(0, 48);
+      if (seen[key]) {
+        var wrap = el.closest(".user_right, .header-right, .user-con, .user-box") || el;
+        wrap.classList.add("cmms-dup-user");
+        wrap.style.display = "none";
+        continue;
+      }
+      seen[key] = true;
+      var bar = el.closest(".user_right, .header-right, .user-con, .user-box, .dd1") || el;
+      bar.classList.add("cmms-user-bar");
+    }
+  }
+
+  function stripBannerBackground() {
+    if (isLoginPage()) {
+      document.body.classList.remove("cmms-logged-in");
+      return;
+    }
+    document.body.classList.add("cmms-logged-in");
+
+    var cycler = document.getElementById("background_cycler");
+    if (cycler) cycler.style.display = "none";
+
+    var headings = document.querySelectorAll("h1, h2, h3, h4, h5, div, span, p, label, strong");
+    for (var i = 0; i < headings.length; i++) {
+      var t = (headings[i].textContent || "").replace(/\s+/g, " ").trim();
+      if (t === "Student Details") {
+        var node = headings[i];
+        for (var k = 0; k < 8 && node; k++) {
+          node.classList.add("cmms-student-banner");
+          node.style.backgroundImage = "none";
+          node = node.parentElement;
+          if (node && (node.classList.contains("wrap-pad") || node.id === "wrapper" || node === document.body)) break;
+        }
+        break;
+      }
+    }
+
+    var imgs = document.querySelectorAll("img");
+    for (var j = 0; j < imgs.length; j++) {
+      var img = imgs[j];
+      if (img.closest(".user-con, .user-box, .user-pic, .imgbox1, .cmms-user-bar, .bg-signin")) continue;
+      var src = (img.getAttribute("src") || "").toLowerCase();
+      var rect = img.getBoundingClientRect();
+      var isLogo = /logo|combined|cmms|home_bg|bg-home|cycler/.test(src);
+      var sitsOnBanner = rect.top < 260 && rect.height > 70 && rect.width > 80;
+      if (isLogo && sitsOnBanner) {
+        img.style.display = "none";
+      }
+    }
+  }
+
+  function hookLoginForm() {
+    var form = document.getElementById("frmtlogin");
+    if (!form || form.getAttribute("data-cmms-hooked")) return;
+    form.setAttribute("data-cmms-hooked", "1");
+    form.addEventListener("submit", function () {
+      var user = document.getElementById("username");
+      var pass = document.getElementById("password");
+      if (!user || !pass) return;
+      try {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cmmsAuth) {
+          window.webkit.messageHandlers.cmmsAuth.postMessage({
+            type: "save",
+            username: user.value || "",
+            password: pass.value || ""
+          });
+        }
+      } catch (e) {}
+    });
+  }
+
+  function run() {
+    ensureViewport();
+    hideDuplicateUserMenus();
+    stripBannerBackground();
     enlargeTaps();
+    hookLoginForm();
+  }
+
+  run();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  }
+  if (!window.__cmmsMobileObserver) {
+    window.__cmmsMobileObserver = new MutationObserver(function () {
+      if (window.__cmmsMobileTimer) return;
+      window.__cmmsMobileTimer = setTimeout(function () {
+        window.__cmmsMobileTimer = null;
+        run();
+      }, 80);
+    });
+    window.__cmmsMobileObserver.observe(document.documentElement, { childList: true, subtree: true });
   }
 })();
+"""#
+
+    static let fillLoginJavaScript = #"""
+(function (u, p) {
+  var user = document.getElementById("username");
+  var pass = document.getElementById("password");
+  var form = document.getElementById("frmtlogin");
+  if (!user || !pass || !form) return false;
+  user.value = u;
+  pass.value = p;
+  if (window.jQuery) {
+    window.jQuery(user).trigger("input").trigger("change");
+    window.jQuery(pass).trigger("input").trigger("change");
+  }
+  form.submit();
+  return true;
+})
 """#
 }

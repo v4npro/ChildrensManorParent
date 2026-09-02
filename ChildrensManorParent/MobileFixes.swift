@@ -171,26 +171,19 @@ enum MobileFixes {
       background-image: none !important;
     }
 
-    .cmms-user-bar {
-      background: #111 !important;
-      background-image: none !important;
-      color: #fff !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      float: none !important;
+    .cmms-dup-user {
+      display: none !important;
+      height: 0 !important;
+      min-height: 0 !important;
       margin: 0 !important;
-      padding: 10px 12px !important;
-      box-sizing: border-box !important;
-      text-align: center !important;
-      position: relative !important;
-      z-index: 5 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      border: 0 !important;
     }
-    .cmms-user-bar .dropdown button,
-    .cmms-user-bar .btn,
-    .cmms-user-bar a {
-      color: #fff !important;
+    body.cmms-logged-in .header {
+      padding-top: 0 !important;
+      min-height: 0 !important;
     }
-    .cmms-dup-user { display: none !important; }
 
     .cmms-student-banner {
       background: #005bab !important;
@@ -244,23 +237,45 @@ enum MobileFixes {
     }
   }
 
+  function menuWrap(el) {
+    return el.closest(".user_right, .header-right, .user-con, .user-box, .dd1") || el;
+  }
+
   function hideDuplicateUserMenus() {
     var nodes = document.querySelectorAll(".user-con, .dd1, .user-box");
-    var seen = {};
+    var groups = {};
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
+      if (el.closest(".cmms-dup-user")) continue;
       var text = (el.innerText || "").replace(/\s+/g, " ").trim();
       if (!text) continue;
       var key = text.slice(0, 48);
-      if (seen[key]) {
-        var wrap = el.closest(".user_right, .header-right, .user-con, .user-box") || el;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push({
+        el: el,
+        top: el.getBoundingClientRect().top
+      });
+    }
+    Object.keys(groups).forEach(function (key) {
+      var list = groups[key];
+      if (list.length < 2) return;
+      list.sort(function (a, b) { return a.top - b.top; });
+      var keep = list[list.length - 1];
+      for (var i = 0; i < list.length - 1; i++) {
+        var wrap = menuWrap(list[i].el);
         wrap.classList.add("cmms-dup-user");
-        wrap.style.display = "none";
-        continue;
       }
-      seen[key] = true;
-      var bar = el.closest(".user_right, .header-right, .user-con, .user-box, .dd1") || el;
-      bar.classList.add("cmms-user-bar");
+      var keepWrap = menuWrap(keep.el);
+      keepWrap.classList.remove("cmms-dup-user");
+      keepWrap.style.removeProperty("display");
+    });
+
+    var headers = document.querySelectorAll(".header, .header-right");
+    for (var h = 0; h < headers.length; h++) {
+      var header = headers[h];
+      if (!header.querySelector(".cmms-dup-user")) continue;
+      var leftover = header.querySelector(".user-con:not(.cmms-dup-user), .dd1:not(.cmms-dup-user), .user-box:not(.cmms-dup-user)");
+      if (!leftover) header.classList.add("cmms-dup-user");
     }
   }
 

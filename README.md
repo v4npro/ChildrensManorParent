@@ -15,11 +15,19 @@ The school site blocks embedding in other web pages (`X-Frame-Options: SAMEORIGI
 
 This app does **not** store your passcode in source, Keychain, or a custom backend. iOS may keep the school’s own session cookie in the app’s WebKit data store, the same way Safari keeps you logged in.
 
+## Install on an iPhone (TestFlight)
+
+Private repo: https://github.com/v4npro/ChildrensManorParent
+
+1. In [App Store Connect](https://appstoreconnect.apple.com/apps): name `Manor Parent`, bundle id `com.v4apps.manorparent`, SKU `manorparent`.
+2. GitHub **Actions → TestFlight (auto-sign) → Run workflow**.
+3. When Apple finishes processing, install from the TestFlight app (Internal Tester).
+
+Unsigned compile check: Actions → **iOS Simulator build**.
+
 ## Open on a Mac
 
-This machine is Windows; you need Xcode on a Mac to install it on an iPhone.
-
-1. Copy `ChildrensManorParent` to the Mac (or open this folder if it is already synced).
+1. Clone this repo (or pull if you already have it).
 2. Open `ChildrensManorParent.xcodeproj` in Xcode 16+.
 3. Select your iPhone as the run destination.
 4. Sign with team `KWXYT3K2WN` (already set) and bundle id `com.v4apps.manorparent`.

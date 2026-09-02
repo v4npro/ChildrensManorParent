@@ -1,0 +1,247 @@
+# Sign and upload Manor Parent to TestFlight using the same distribution
+# certificate as v4appsNav / v4appsMapboxNav, plus an App Store profile
+# created via the ASC API for com.v4apps.manorparent.
+#
+# Secrets:
+#   APP_STORE_CONNECT_API_KEY, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID
+#   APPLE_TEAM_ID
+#   BUILD_CERTIFICATE_BASE64, P12_PASSWORD
+name: TestFlight (auto-sign)
+
+on:
+  workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: "Version shown in TestFlight"
+        required: false
+        default: "0.1.0"
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    env:
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      PROFILE_NAME: Manor Parent App Store
+      BUNDLE_ID: com.v4apps.manorparent
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the secrets are present
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "${TEAM_ID:-}" ]   || missing="$missing APPLE_TEAM_ID"
+          [ -n "${KEY_ID:-}" ]    || missing="$missing APP_STORE_CONNECT_KEY_ID"
+          [ -n "${ISSUER_ID:-}" ] || missing="$missing APP_STORE_CONNECT_ISSUER_ID"
+          [ -n "${{ secrets.APP_STORE_CONNECT_API_KEY }}" ] || missing="$missing APP_STORE_CONNECT_API_KEY"
+          [ -n "${{ secrets.BUILD_CERTIFICATE_BASE64 }}" ] || missing="$missing BUILD_CERTIFICATE_BASE64"
+          [ -n "${{ secrets.P12_PASSWORD }}" ] || missing="$missing P12_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+          echo "Required secrets are set."
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Write the App Store Connect key
+        env:
+          ASC_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          printf '%s\n' "$ASC_KEY" > "$RUNNER_TEMP/private_keys/AuthKey_${KEY_ID}.p8"
+          if ! grep -q "BEGIN PRIVATE KEY" "$RUNNER_TEMP/private_keys/AuthKey_${KEY_ID}.p8"; then
+            echo "::error::APP_STORE_CONNECT_API_KEY does not look like a .p8 file."
+            exit 1
+          fi
+
+      - name: Create or download App Store profile
+        env:
+          ASC_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/asc-venv"
+          "$RUNNER_TEMP/asc-venv/bin/pip" install --quiet "PyJWT[crypto]"
+          "$RUNNER_TEMP/asc-venv/bin/python" - <<'PY'
+          import base64, json, os, pathlib, time, urllib.error, urllib.request
+          import jwt
+
+          key_id = os.environ["KEY_ID"]
+          issuer = os.environ["ISSUER_ID"]
+          bundle_id = os.environ["BUNDLE_ID"]
+          profile_name = os.environ["PROFILE_NAME"]
+          p8 = pathlib.Path(os.environ["RUNNER_TEMP"]) / "private_keys" / f"AuthKey_{key_id}.p8"
+          private_key = p8.read_text()
+          token = jwt.encode(
+              {"iss": issuer, "iat": int(time.time()), "exp": int(time.time()) + 1100, "aud": "appstoreconnect-v1"},
+              private_key,
+              algorithm="ES256",
+              headers={"kid": key_id, "typ": "JWT"},
+          )
+          if isinstance(token, bytes):
+              token = token.decode()
+
+          def api(method, path, body=None):
+              req = urllib.request.Request(
+                  "https://api.appstoreconnect.apple.com" + path,
+                  data=None if body is None else json.dumps(body).encode(),
+                  method=method,
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": "application/json",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      raw = resp.read()
+                      return json.loads(raw) if raw else {}
+              except urllib.error.HTTPError as e:
+                  err = e.read().decode("utf-8", "replace")
+                  raise SystemExit(f"ASC {method} {path} -> {e.code}: {err[:800]}") from e
+
+          bundles = api("GET", f"/v1/bundleIds?filter[identifier]={bundle_id}")["data"]
+          if not bundles:
+              raise SystemExit(f"No App ID for {bundle_id}. Create it at developer.apple.com → Identifiers.")
+          bundle_res = bundles[0]["id"]
+          print("bundle", bundles[0]["attributes"]["identifier"], bundle_res)
+
+          certs = api("GET", "/v1/certificates?filter[certificateType]=DISTRIBUTION&limit=50")["data"]
+          if not certs:
+              certs = api("GET", "/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION&limit=50")["data"]
+          if not certs:
+              raise SystemExit("No Apple Distribution certificate on the team.")
+          cert_id = certs[0]["id"]
+          print("certificate", certs[0]["attributes"].get("name"), cert_id)
+
+          dest = pathlib.Path.home() / "Library/MobileDevice/Provisioning Profiles"
+          dest.mkdir(parents=True, exist_ok=True)
+          out = dest / "manorparent.mobileprovision"
+
+          existing = api("GET", "/v1/profiles?filter[profileType]=IOS_APP_STORE&limit=200")["data"]
+          match = next((p for p in existing if p["attributes"]["name"] == profile_name), None)
+          if match and match["attributes"].get("profileState") == "ACTIVE":
+              print("reusing profile", match["id"])
+              out.write_bytes(base64.b64decode(match["attributes"]["profileContent"]))
+          else:
+              if match:
+                  api("DELETE", f"/v1/profiles/{match['id']}")
+                  print("deleted stale profile", match["id"])
+              created = api("POST", "/v1/profiles", {
+                  "data": {
+                      "type": "profiles",
+                      "attributes": {"name": profile_name, "profileType": "IOS_APP_STORE"},
+                      "relationships": {
+                          "bundleId": {"data": {"type": "bundleIds", "id": bundle_res}},
+                          "certificates": {"data": [{"type": "certificates", "id": cert_id}]},
+                      },
+                  }
+              })["data"]
+              print("created profile", created["id"], created["attributes"]["name"])
+              out.write_bytes(base64.b64decode(created["attributes"]["profileContent"]))
+          print("profile bytes", out.stat().st_size)
+          PY
+
+      - name: Install distribution certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}
+          CERTIFICATE_PATH: ${{ runner.temp }}/build_certificate.p12
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, os
+          open(os.environ["CERTIFICATE_PATH"], "wb").write(base64.b64decode(os.environ["BUILD_CERTIFICATE_BASE64"]))
+          PY
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
+
+      - name: Archive
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -project ChildrensManorParent.xcodeproj \
+            -scheme ChildrensManorParent \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/ChildrensManorParent.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            MARKETING_VERSION="${{ inputs.marketing_version || '0.1.0' }}"
+
+      - name: Export IPA
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>destination</key>
+            <string>export</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.v4apps.manorparent</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
+            <key>compileBitcode</key>
+            <false/>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/ChildrensManorParent.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          ls -la "$RUNNER_TEMP/export"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChildrensManorParent-ipa
+          path: ${{ runner.temp }}/export/*.ipa
+          if-no-files-found: error
+
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@v5
+        with:
+          app-path: ${{ runner.temp }}/export/ChildrensManorParent.ipa
+          app-type: ios
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          uses-non-exempt-encryption: "false"
+          wait-for-processing: "false"
+          backend: appstore-api
+
+      - name: Clean up the signing key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/private_keys"

@@ -1,0 +1,33 @@
+# Compile for the iOS Simulator. No signing, no Apple secrets.
+name: iOS Simulator build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ChildrensManorParent/**"
+      - "ChildrensManorParent.xcodeproj/**"
+      - ".github/workflows/ios-simulator.yml"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show Xcode
+        run: xcodebuild -version && xcodebuild -project ChildrensManorParent.xcodeproj -list
+
+      - name: Build (simulator, no signing)
+        run: |
+          xcodebuild \
+            -project ChildrensManorParent.xcodeproj \
+            -scheme ChildrensManorParent \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build

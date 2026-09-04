@@ -66,6 +66,21 @@ struct PortalWebView: UIViewRepresentable {
                 Task { @MainActor in
                     model.showFaceIDButton = FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate
                 }
+                return
+            }
+            if type == "codeSave" {
+                let value = body["value"] as? String ?? ""
+                let student = body["student"] as? String
+                ClassroomCodeStore.set(value, student: student)
+                return
+            }
+            if type == "codeLoad" {
+                let student = body["student"] as? String
+                let code = ClassroomCodeStore.get(student: student)
+                let payload = (try? JSONSerialization.data(withJSONObject: [code]))
+                    .flatMap { String(data: $0, encoding: .utf8) }
+                    .map { String($0.dropFirst().dropLast()) } ?? "\"\""
+                webView?.evaluateJavaScript("window.__cmmsApplyClassroomCode && window.__cmmsApplyClassroomCode(\(payload));", completionHandler: nil)
             }
         }
 

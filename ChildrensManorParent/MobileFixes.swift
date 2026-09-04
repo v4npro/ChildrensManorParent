@@ -234,30 +234,60 @@ enum MobileFixes {
       font-weight: 600 !important;
       color: #005bab !important;
     }
+    body.cmms-logged-in nav.tab_cls,
     body.cmms-logged-in .tab_cls {
-      margin: 0 -4px 8px !important;
+      margin: 0 0 8px !important;
+      overflow: hidden !important;
     }
+    body.cmms-logged-in nav.tab_cls .nav.nav-tabs.nav-fill,
+    body.cmms-logged-in .tab_cls > .nav.nav-tabs,
     body.cmms-logged-in .tab_cls .nav-tabs {
       display: flex !important;
+      flex-direction: row !important;
       flex-wrap: nowrap !important;
+      align-items: stretch !important;
       overflow-x: auto !important;
+      overflow-y: hidden !important;
       -webkit-overflow-scrolling: touch;
-      border-bottom: 1px solid #d9e2ea !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      border: none !important;
     }
+    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link,
+    body.cmms-logged-in .tab_cls a.nav-item.nav-link,
     body.cmms-logged-in .tab_cls .nav-link {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
       flex: 0 0 auto !important;
-      min-width: 72px !important;
+      float: none !important;
+      width: auto !important;
+      max-width: none !important;
+      min-width: 64px !important;
+      margin: 0 !important;
+      margin-bottom: 0 !important;
       text-align: center !important;
       font-size: 11px !important;
-      line-height: 1.2 !important;
+      line-height: 1.15 !important;
       padding: 8px 10px 10px !important;
       white-space: nowrap !important;
     }
+    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link img,
     body.cmms-logged-in .tab_cls .nav-link img {
       display: block !important;
       margin: 0 auto 4px !important;
+      margin-right: 0 !important;
       width: 22px !important;
       height: 22px !important;
+      flex-shrink: 0 !important;
+    }
+    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link > span {
+      display: block !important;
+      white-space: nowrap !important;
+    }
+    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link.active:after {
+      display: none !important;
     }
     body.cmms-logged-in .tab-content,
     body.cmms-logged-in #nav-tabContent,
@@ -549,6 +579,24 @@ enum MobileFixes {
     if (!rows.length) ensureCodeRow();
   };
 
+  function forceHorizontalTabs() {
+    var bar = document.querySelector(".tab_cls .nav-tabs");
+    if (!bar) return;
+    bar.style.setProperty("display", "flex", "important");
+    bar.style.setProperty("flex-direction", "row", "important");
+    bar.style.setProperty("flex-wrap", "nowrap", "important");
+    bar.style.setProperty("overflow-x", "auto", "important");
+    var links = bar.querySelectorAll("a.nav-item, a.nav-link");
+    for (var i = 0; i < links.length; i++) {
+      links[i].style.setProperty("display", "flex", "important");
+      links[i].style.setProperty("flex-direction", "column", "important");
+      links[i].style.setProperty("flex", "0 0 auto", "important");
+      links[i].style.setProperty("width", "auto", "important");
+      links[i].style.setProperty("max-width", "none", "important");
+      links[i].style.setProperty("margin-bottom", "0", "important");
+    }
+  }
+
   function shortenTabLabels() {
     var map = {
       "Latest Feed": "Feed",
@@ -608,6 +656,7 @@ enum MobileFixes {
     hideTopUserDropdown();
     stripBannerBackground();
     shortenTabLabels();
+    forceHorizontalTabs();
     ensureCodeRow();
     enlargeTaps();
     hookLoginForm();

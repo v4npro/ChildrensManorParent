@@ -188,8 +188,14 @@ enum MobileFixes {
     body.cmms-logged-in .dd1,
     body.cmms-logged-in .header .user-box,
     body.cmms-logged-in .header .dropdown,
-    body.cmms-logged-in .header-right .dropdown {
+    body.cmms-logged-in .header-right .dropdown,
+    body.cmms-logged-in .profile_image.profile_mob,
+    body.cmms-logged-in .profile_mob {
       display: none !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
     }
 
     .cmms-student-banner {
@@ -272,6 +278,11 @@ enum MobileFixes {
   }
 
   function hideTopUserDropdown() {
+    var headerMenus = document.querySelectorAll(".profile_image.profile_mob, .profile_mob");
+    for (var p = 0; p < headerMenus.length; p++) {
+      headerMenus[p].classList.add("cmms-dup-user");
+    }
+
     var cutoff = findCutoffTop();
     var nodes = document.querySelectorAll(".user-con, .dd1, .user-box, .dropdown, button.dropdown-toggle, .header button, .header a");
     var seen = [];

@@ -289,6 +289,53 @@ enum MobileFixes {
     body.cmms-logged-in .tab_cls > div a.nav-item.nav-link.active:after {
       display: none !important;
     }
+
+    body.cmms-logged-in #no-more-tables input[type="checkbox"] {
+      position: absolute !important;
+      opacity: 0 !important;
+      width: 1px !important;
+      height: 1px !important;
+      pointer-events: none !important;
+    }
+    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-btn) {
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-btn):before {
+      display: none !important;
+    }
+    body.cmms-logged-in .cmms-chk-btn {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+      min-height: 52px !important;
+      margin: 6px 0 !important;
+      padding: 10px 14px !important;
+      border: 0 !important;
+      border-radius: 12px !important;
+      background: #e8eef4 !important;
+      color: #005bab !important;
+      font-size: 17px !important;
+      font-weight: 700 !important;
+    }
+    body.cmms-logged-in .cmms-chk-btn.is-on {
+      background: #4da23e !important;
+      color: #fff !important;
+    }
+    body.cmms-logged-in .cmms-chk-btn.is-absent {
+      background: #c7332c !important;
+      color: #fff !important;
+    }
+    body.cmms-logged-in .breadcrumb a {
+      display: inline-flex !important;
+      align-items: center !important;
+      min-height: 44px !important;
+      padding: 0 14px !important;
+      border-radius: 10px !important;
+      background: #005bab !important;
+      color: #fff !important;
+    }
     body.cmms-logged-in .tab-content,
     body.cmms-logged-in #nav-tabContent,
     body.cmms-logged-in .tab-pane {
@@ -631,6 +678,75 @@ enum MobileFixes {
     if (cycler) cycler.style.display = "none";
   }
 
+  function checkboxLabel(cb) {
+    var td = cb.closest("td");
+    if (td && td.getAttribute("data-title")) return td.getAttribute("data-title");
+    var named = cb.getAttribute("title") || cb.getAttribute("aria-label") || "";
+    if (named) return named;
+    var onclick = cb.getAttribute("onclick") || cb.getAttribute("onchange") || "";
+    var statusMatch = onclick.match(/addInOutAbs\s*\([^,]+,\s*['\"]([^'\"]+)['\"]/i);
+    if (statusMatch) {
+      var s = statusMatch[1].toUpperCase();
+      if (s === "IN" || s === "I") return "Check In";
+      if (s === "OUT" || s === "O") return "Check Out";
+      if (s === "ABS" || s === "ABSENT" || s === "A") return "Absent";
+      return statusMatch[1];
+    }
+    if (td && td.parentNode) {
+      var idx = Array.prototype.indexOf.call(td.parentNode.children, td);
+      var table = cb.closest("table");
+      var ths = table ? table.querySelectorAll("thead th") : [];
+      if (ths[idx]) {
+        var t = (ths[idx].innerText || "").replace(/\s+/g, " ").trim();
+        if (t) {
+          if (/^in$/i.test(t)) return "Check In";
+          if (/^out$/i.test(t)) return "Check Out";
+          if (/^abs/i.test(t)) return "Absent";
+          return t;
+        }
+      }
+    }
+    var lab = cb.closest("label");
+    if (lab) {
+      var lt = (lab.innerText || "").replace(/\s+/g, " ").trim();
+      if (lt) return lt;
+    }
+    return "Select";
+  }
+
+  function syncChkButton(cb, btn) {
+    var on = !!cb.checked;
+    var label = (btn.textContent || "").toLowerCase();
+    btn.classList.toggle("is-on", on && label.indexOf("absent") === -1);
+    btn.classList.toggle("is-absent", on && label.indexOf("absent") !== -1);
+  }
+
+  function buttonizeCheckboxes() {
+    var root = document.getElementById("no-more-tables");
+    if (!root) return;
+    var boxes = root.querySelectorAll('input[type="checkbox"]');
+    for (var i = 0; i < boxes.length; i++) {
+      var cb = boxes[i];
+      if (cb.getAttribute("data-cmms-btn")) continue;
+      cb.setAttribute("data-cmms-btn", "1");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cmms-chk-btn";
+      btn.textContent = checkboxLabel(cb);
+      syncChkButton(cb, btn);
+      (function (checkbox, button) {
+        button.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          checkbox.click();
+          syncChkButton(checkbox, button);
+        });
+      })(cb, btn);
+      var host = cb.parentNode || root;
+      host.appendChild(btn);
+    }
+  }
+
   function hookLoginForm() {
     var form = document.getElementById("frmtlogin");
     if (!form || form.getAttribute("data-cmms-hooked")) return;
@@ -658,6 +774,7 @@ enum MobileFixes {
     shortenTabLabels();
     forceHorizontalTabs();
     ensureCodeRow();
+    buttonizeCheckboxes();
     enlargeTaps();
     hookLoginForm();
     if (!isLoginPage() && window.__cmmsClassroomCode === undefined) {

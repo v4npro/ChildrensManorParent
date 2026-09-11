@@ -2,20 +2,73 @@ import SwiftUI
 
 struct PortalScreen: View {
     @StateObject private var model = PortalModel()
+    @Environment(\.scenePhase) private var scenePhase
+
+    private let schoolBlue = Color(red: 0.0, green: 0.357, blue: 0.671)
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            ZStack {
-                PortalWebView(model: model)
-                    .ignoresSafeArea(edges: .bottom)
+        ZStack {
+            VStack(spacing: 0) {
+                topBar
+                ZStack {
+                    PortalWebView(model: model)
+                        .ignoresSafeArea(edges: .bottom)
 
-                if let message = model.lastError {
-                    errorBanner(message)
+                    if let message = model.lastError {
+                        errorBanner(message)
+                    }
                 }
             }
+
+            if model.hidePortal || !model.isUnlocked {
+                lockCover
+            }
         }
-        .background(Color(red: 0.0, green: 0.357, blue: 0.671).ignoresSafeArea())
+        .background(schoolBlue.ignoresSafeArea())
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .inactive:
+                model.coverForAppSwitch()
+            case .background:
+                model.lockForBackground()
+            case .active:
+                Task { await model.handleBecameActive() }
+            @unknown default:
+                break
+            }
+        }
+        .task {
+            await model.handleBecameActive()
+        }
+    }
+
+    private var lockCover: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "faceid")
+                .font(.system(size: 56, weight: .medium))
+            Text("Manor Parent")
+                .font(.title2.weight(.semibold))
+            Text("Unlock with Face ID to continue.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.85))
+            Button {
+                Task { await model.unlockWithFaceID() }
+            } label: {
+                Text(model.isAuthenticating ? "Waiting…" : "Unlock")
+                    .font(.headline)
+                    .frame(minWidth: 160, minHeight: 48)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.white)
+            .foregroundStyle(schoolBlue)
+            .disabled(model.isAuthenticating)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(.white)
+        .background(schoolBlue)
+        .ignoresSafeArea()
     }
 
     private var topBar: some View {
@@ -78,7 +131,7 @@ struct PortalScreen: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Color(red: 0.0, green: 0.357, blue: 0.671))
+        .background(schoolBlue)
     }
 
     private func errorBanner(_ message: String) -> some View {

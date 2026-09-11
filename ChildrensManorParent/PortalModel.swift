@@ -13,9 +13,10 @@ final class PortalModel: ObservableObject {
     @Published var isLoginPage = true
     @Published var showFaceIDButton = false
     @Published var isAuthenticating = false
+    @Published var isUnlocked = false
+    @Published var hidePortal = true
 
     weak var webView: WKWebView?
-    private var didAutoPromptFaceID = false
 
     func goBack() {
         webView?.goBack()
@@ -48,22 +49,54 @@ final class PortalModel: ObservableObject {
         }
         let login = Self.isLogin(webView.url)
         isLoginPage = login
-        showFaceIDButton = login && FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate
+        showFaceIDButton = login && FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate && isUnlocked
     }
 
     func pageFinished(in webView: WKWebView) {
         sync(from: webView)
-        guard isLoginPage, FaceIDAuth.hasCredentials, FaceIDAuth.canAuthenticate, !didAutoPromptFaceID else { return }
-        didAutoPromptFaceID = true
-        Task { await unlockWithFaceID() }
+        if isUnlocked {
+            fillLoginIfNeeded()
+        }
+    }
+
+    func coverForAppSwitch() {
+        hidePortal = true
+    }
+
+    func lockForBackground() {
+        isUnlocked = false
+        hidePortal = true
+        isAuthenticating = false
+    }
+
+    func handleBecameActive() async {
+        hidePortal = !isUnlocked
+        if isUnlocked { return }
+        await unlockWithFaceID()
     }
 
     func unlockWithFaceID() async {
-        guard !isAuthenticating, let creds = FaceIDAuth.load() else { return }
+        if !FaceIDAuth.canAuthenticate {
+            isUnlocked = true
+            hidePortal = false
+            fillLoginIfNeeded()
+            return
+        }
+        guard !isAuthenticating else { return }
         isAuthenticating = true
-        let ok = await FaceIDAuth.authenticate()
+        let ok = await FaceIDAuth.authenticate(reason: "Unlock Manor Parent.")
         isAuthenticating = false
-        guard ok else { return }
+        guard ok else {
+            hidePortal = true
+            return
+        }
+        isUnlocked = true
+        hidePortal = false
+        fillLoginIfNeeded()
+    }
+
+    private func fillLoginIfNeeded() {
+        guard isLoginPage, let creds = FaceIDAuth.load() else { return }
         fillLogin(username: creds.username, password: creds.password)
     }
 

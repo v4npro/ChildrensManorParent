@@ -53,9 +53,9 @@ enum FaceIDAuth {
         SecItemDelete(query as CFDictionary)
     }
 
-    static func authenticate() async -> Bool {
+    static func authenticate(reason: String = "Unlock Manor Parent.") async -> Bool {
         let context = LAContext()
-        context.localizedCancelTitle = "Use passcode"
+        context.localizedCancelTitle = "Cancel"
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             return false
@@ -63,7 +63,7 @@ enum FaceIDAuth {
         return await withCheckedContinuation { continuation in
             context.evaluatePolicy(
                 .deviceOwnerAuthentication,
-                localizedReason: "Unlock Manor Parent to sign in to the parent portal."
+                localizedReason: reason
             ) { success, _ in
                 continuation.resume(returning: success)
             }

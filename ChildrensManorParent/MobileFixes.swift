@@ -349,6 +349,20 @@ enum MobileFixes {
       margin: 0 !important;
       border: 0 !important;
     }
+    body.cmms-logged-in #no-more-tables img.avatar,
+    body.cmms-logged-in #no-more-tables img[src*="default_thumb"],
+    body.cmms-logged-in #no-more-tables img[src*="thumb"],
+    body.cmms-logged-in #no-more-tables img[alt*="Profile"],
+    body.cmms-logged-in #no-more-tables img[alt*="Student"],
+    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-row) > img,
+    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-row) img,
+    body.cmms-logged-in .cmms-roster-photo-hide {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
     body.cmms-logged-in .cmms-chk-btn.is-on {
       background: #4da23e !important;
       color: #fff !important;
@@ -751,9 +765,29 @@ enum MobileFixes {
       if (tr.querySelector(".cmms-chk-row")) continue;
       var circles = tr.querySelectorAll(".cmms-chk-circle");
       if (!circles.length) continue;
+      var tds = tr.querySelectorAll("td");
+      var nameCell = null;
+      for (var t = 0; t < tds.length; t++) {
+        var cellText = (tds[t].innerText || "").replace(/\s+/g, " ").trim();
+        var onlyPhoto = tds[t].querySelector("img") && cellText.length < 2;
+        if (onlyPhoto) {
+          tds[t].classList.add("cmms-chk-cell-hide");
+          continue;
+        }
+        if (!nameCell && cellText && !tds[t].querySelector('input[type="checkbox"]')) {
+          nameCell = tds[t];
+        }
+      }
+      var imgs = tr.querySelectorAll("img, .avatar");
+      for (var p = 0; p < imgs.length; p++) {
+        var src = (imgs[p].getAttribute("src") || "") + " " + (imgs[p].getAttribute("alt") || "") + " " + (imgs[p].className || "");
+        if (/avatar|thumb|profile|student|user|person/i.test(src) || imgs[p].closest("td") === nameCell) {
+          imgs[p].classList.add("cmms-roster-photo-hide");
+        }
+      }
       var holder = document.createElement("div");
       holder.className = "cmms-chk-row";
-      var nameCell = tr.querySelector("td") || tr;
+      if (!nameCell) nameCell = tr.querySelector("td") || tr;
       nameCell.appendChild(holder);
       for (var c = 0; c < circles.length; c++) {
         var cell = circles[c].closest("td");

@@ -319,6 +319,36 @@ enum MobileFixes {
       font-size: 17px !important;
       font-weight: 700 !important;
     }
+    body.cmms-logged-in .cmms-chk-row {
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-evenly !important;
+      align-items: center !important;
+      gap: 16px !important;
+      padding: 10px 8px 14px !important;
+      width: 100% !important;
+    }
+    body.cmms-logged-in .cmms-chk-btn.cmms-chk-circle {
+      width: 68px !important;
+      height: 68px !important;
+      min-width: 68px !important;
+      min-height: 68px !important;
+      max-width: 68px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 50% !important;
+      flex: 0 0 68px !important;
+      font-size: 13px !important;
+      line-height: 1.1 !important;
+      text-align: center !important;
+    }
+    body.cmms-logged-in #no-more-tables td.cmms-chk-cell-hide {
+      display: none !important;
+      height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+    }
     body.cmms-logged-in .cmms-chk-btn.is-on {
       background: #4da23e !important;
       color: #fff !important;
@@ -678,47 +708,59 @@ enum MobileFixes {
     if (cycler) cycler.style.display = "none";
   }
 
-  function checkboxLabel(cb) {
-    var td = cb.closest("td");
-    if (td && td.getAttribute("data-title")) return td.getAttribute("data-title");
-    var named = cb.getAttribute("title") || cb.getAttribute("aria-label") || "";
-    if (named) return named;
+  function checkboxKind(cb) {
+    var raw = "";
     var onclick = cb.getAttribute("onclick") || cb.getAttribute("onchange") || "";
     var statusMatch = onclick.match(/addInOutAbs\s*\([^,]+,\s*['\"]([^'\"]+)['\"]/i);
-    if (statusMatch) {
-      var s = statusMatch[1].toUpperCase();
-      if (s === "IN" || s === "I") return "Check In";
-      if (s === "OUT" || s === "O") return "Check Out";
-      if (s === "ABS" || s === "ABSENT" || s === "A") return "Absent";
-      return statusMatch[1];
-    }
-    if (td && td.parentNode) {
-      var idx = Array.prototype.indexOf.call(td.parentNode.children, td);
-      var table = cb.closest("table");
-      var ths = table ? table.querySelectorAll("thead th") : [];
-      if (ths[idx]) {
-        var t = (ths[idx].innerText || "").replace(/\s+/g, " ").trim();
-        if (t) {
-          if (/^in$/i.test(t)) return "Check In";
-          if (/^out$/i.test(t)) return "Check Out";
-          if (/^abs/i.test(t)) return "Absent";
-          return t;
-        }
+    if (statusMatch) raw = statusMatch[1];
+    if (!raw) {
+      var td = cb.closest("td");
+      raw = (td && td.getAttribute("data-title")) || cb.getAttribute("title") || cb.getAttribute("aria-label") || "";
+      if (!raw && td && td.parentNode) {
+        var idx = Array.prototype.indexOf.call(td.parentNode.children, td);
+        var table = cb.closest("table");
+        var ths = table ? table.querySelectorAll("thead th") : [];
+        if (ths[idx]) raw = (ths[idx].innerText || "");
       }
     }
+    raw = (raw || "").replace(/\s+/g, " ").trim();
+    var u = raw.toUpperCase();
+    if (u === "IN" || u === "I" || /^check\s*in$/i.test(raw)) return { kind: "in", label: "In" };
+    if (u === "OUT" || u === "O" || /^check\s*out$/i.test(raw)) return { kind: "out", label: "Out" };
+    if (u === "ABS" || u === "ABSENT" || u === "A" || /^abs/i.test(raw)) return { kind: "abs", label: "Abs" };
+    if (raw) return { kind: "other", label: raw };
     var lab = cb.closest("label");
     if (lab) {
       var lt = (lab.innerText || "").replace(/\s+/g, " ").trim();
-      if (lt) return lt;
+      if (lt) return { kind: "other", label: lt };
     }
-    return "Select";
+    return { kind: "other", label: "Select" };
   }
 
   function syncChkButton(cb, btn) {
     var on = !!cb.checked;
-    var label = (btn.textContent || "").toLowerCase();
-    btn.classList.toggle("is-on", on && label.indexOf("absent") === -1);
-    btn.classList.toggle("is-absent", on && label.indexOf("absent") !== -1);
+    var absent = btn.classList.contains("cmms-chk-abs") || /abs/i.test(btn.textContent || "");
+    btn.classList.toggle("is-on", on && !absent);
+    btn.classList.toggle("is-absent", on && absent);
+  }
+
+  function groupCircleButtons(root) {
+    var rows = root.querySelectorAll("tr");
+    for (var r = 0; r < rows.length; r++) {
+      var tr = rows[r];
+      if (tr.querySelector(".cmms-chk-row")) continue;
+      var circles = tr.querySelectorAll(".cmms-chk-circle");
+      if (!circles.length) continue;
+      var holder = document.createElement("div");
+      holder.className = "cmms-chk-row";
+      var nameCell = tr.querySelector("td") || tr;
+      nameCell.appendChild(holder);
+      for (var c = 0; c < circles.length; c++) {
+        var cell = circles[c].closest("td");
+        holder.appendChild(circles[c]);
+        if (cell && cell !== nameCell) cell.classList.add("cmms-chk-cell-hide");
+      }
+    }
   }
 
   function buttonizeCheckboxes() {
@@ -729,10 +771,14 @@ enum MobileFixes {
       var cb = boxes[i];
       if (cb.getAttribute("data-cmms-btn")) continue;
       cb.setAttribute("data-cmms-btn", "1");
+      var info = checkboxKind(cb);
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "cmms-chk-btn";
-      btn.textContent = checkboxLabel(cb);
+      if (info.kind === "in" || info.kind === "out" || info.kind === "abs") {
+        btn.className += " cmms-chk-circle cmms-chk-" + info.kind;
+      }
+      btn.textContent = info.label;
       syncChkButton(cb, btn);
       (function (checkbox, button) {
         button.addEventListener("click", function (ev) {
@@ -745,6 +791,7 @@ enum MobileFixes {
       var host = cb.parentNode || root;
       host.appendChild(btn);
     }
+    groupCircleButtons(root);
   }
 
   function hookLoginForm() {

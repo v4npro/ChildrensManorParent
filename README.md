@@ -14,7 +14,7 @@ The school site blocks embedding in other web pages (`X-Frame-Options: SAMEORIGI
 - Pull-to-refresh, back, home, and reload in the app chrome
 - Face ID: after the first school-site sign-in, the passcode is stored in the iPhone Keychain (this device only). Face ID fills it on the next login. Leaving the app (Home or another app) locks it; Face ID is required to come back. It is never uploaded to GitHub or Grok.
 - Classroom **Code reminder** under Student Details (saved on the phone, tap Edit to change). It is not sent to the school site.
-- Settings (gear): open Check In / Out after login, and hide or restore the Manor Parent bar. Check In uses large In / Out / Abs circles without the extra header.
+- Settings (gear): **Simpler Check In / Out** opens Check In after login, uses large circles, and hides the Manor Parent bar on that screen only. Turn it off to keep the bar everywhere.
 
 This app does **not** put your passcode in source or any backend of ours. iOS may keep the school’s own session cookie in the app’s WebKit data store, the same way Safari keeps you logged in.
 

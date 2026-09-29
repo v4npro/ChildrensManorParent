@@ -9,7 +9,7 @@ struct PortalScreen: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                if !model.hideAppBar {
+                if !model.shouldHideAppBar {
                     topBar
                 }
                 ZStack {
@@ -20,7 +20,7 @@ struct PortalScreen: View {
                         errorBanner(message)
                     }
 
-                    if model.hideAppBar, model.isUnlocked, !model.hidePortal {
+                    if model.shouldHideAppBar {
                         floatingGear
                     }
                 }
@@ -176,18 +176,12 @@ struct PortalScreen: View {
     private var settingsSheet: some View {
         NavigationStack {
             List {
-                Section("After login") {
-                    Toggle("Open Check In / Out", isOn: Binding(
+                Section("Check In / Out") {
+                    Toggle("Simpler Check In / Out", isOn: Binding(
                         get: { model.startOnCheckIn },
                         set: { model.setStartOnCheckIn($0) }
                     ))
-                }
-                Section("App bar") {
-                    Toggle("Hide Manor Parent bar", isOn: Binding(
-                        get: { model.hideAppBar },
-                        set: { model.setHideAppBar($0) }
-                    ))
-                    Text("Turn this off to bring back Back, Home, and Reload. When it is on, use the gear to open settings.")
+                    Text("When this is on, login opens Check In, the circles are large, and the Manor Parent bar is hidden on that screen only. Turn it off to keep the bar everywhere, like before.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

@@ -17,8 +17,12 @@ final class PortalModel: ObservableObject {
     @Published var isUnlocked = false
     @Published var hidePortal = true
     @Published var startOnCheckIn = AppSettings.startOnCheckIn
-    @Published var hideAppBar = AppSettings.hideAppBar
+    @Published var isCheckInPage = false
     @Published var showSettings = false
+
+    var shouldHideAppBar: Bool {
+        startOnCheckIn && isCheckInPage && isUnlocked && !hidePortal
+    }
 
     weak var webView: WKWebView?
     private var wasLoginPage = true
@@ -54,11 +58,15 @@ final class PortalModel: ObservableObject {
     func setStartOnCheckIn(_ value: Bool) {
         AppSettings.startOnCheckIn = value
         startOnCheckIn = value
+        applySimpleModeToPage()
     }
 
-    func setHideAppBar(_ value: Bool) {
-        AppSettings.hideAppBar = value
-        hideAppBar = value
+    func applySimpleModeToPage() {
+        let flag = startOnCheckIn ? "true" : "false"
+        webView?.evaluateJavaScript(
+            "window.__cmmsApplySimpleMode && window.__cmmsApplySimpleMode(\(flag));",
+            completionHandler: nil
+        )
     }
 
     func sync(from webView: WKWebView) {
@@ -70,11 +78,13 @@ final class PortalModel: ObservableObject {
         }
         let login = Self.isLogin(webView.url)
         isLoginPage = login
+        isCheckInPage = Self.isCheckIn(webView.url)
         showFaceIDButton = login && FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate && isUnlocked
     }
 
     func pageFinished(in webView: WKWebView) {
         sync(from: webView)
+        applySimpleModeToPage()
         if isUnlocked {
             fillLoginIfNeeded()
         }

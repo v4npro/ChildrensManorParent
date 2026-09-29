@@ -672,6 +672,13 @@ enum MobileFixes {
     }
   }
 
+  window.__cmmsApplySimpleMode = function (on) {
+    window.__cmmsSimpleCheckIn = !!on;
+    if (!document.body) return;
+    if (on && /signin_out/i.test(location.pathname)) document.body.classList.add("cmms-checkin");
+    else document.body.classList.remove("cmms-checkin");
+  };
+
   window.__cmmsApplyClassroomCode = function (code) {
     window.__cmmsClassroomCode = code || "";
     var rows = document.querySelectorAll(".cmms-code-row");
@@ -730,7 +737,8 @@ enum MobileFixes {
       return;
     }
     document.body.classList.add("cmms-logged-in");
-    if (/signin_out/i.test(location.pathname)) {
+    if (typeof window.__cmmsSimpleCheckIn === "undefined") window.__cmmsSimpleCheckIn = true;
+    if (window.__cmmsSimpleCheckIn && /signin_out/i.test(location.pathname)) {
       document.body.classList.add("cmms-checkin");
     } else {
       document.body.classList.remove("cmms-checkin");

@@ -198,12 +198,42 @@ enum MobileFixes {
       font-weight: 700 !important;
       font-size: 15px !important;
     }
-    body.cmms-checkin nav.nav_cls,
+    body.cmms-checkin nav.nav_cls {
+      display: block !important;
+    }
+    body.cmms-checkin nav.nav_cls .in_out,
+    body.cmms-checkin nav.nav_cls hr,
     body.cmms-checkin .profile_desk,
+    body.cmms-checkin .profile_mob,
+    body.cmms-checkin .navbar-brand,
     body.cmms-checkin .left_side_cls,
     body.cmms-checkin .right_side_cls,
-    body.cmms-checkin .navbar-brand {
+    body.cmms-checkin .parent_contact {
       display: none !important;
+    }
+    body.cmms-checkin #cmms-parent-name {
+      display: block !important;
+      text-align: left !important;
+      color: #fff !important;
+      font-size: 18px !important;
+      font-weight: 700 !important;
+      padding: 2px 0 10px !important;
+    }
+    body.cmms-checkin .cmms-chk-btn.cmms-chk-circle {
+      background: #fff !important;
+      color: #005bab !important;
+      border: 3px solid #005bab !important;
+      box-sizing: border-box !important;
+    }
+    body.cmms-checkin .cmms-chk-btn.cmms-chk-circle.is-on {
+      background: #4da23e !important;
+      border-color: #4da23e !important;
+      color: #fff !important;
+    }
+    body.cmms-checkin .cmms-chk-btn.cmms-chk-circle.is-absent {
+      background: #c7332c !important;
+      border-color: #c7332c !important;
+      color: #fff !important;
     }
     body.cmms-logged-in .student_detail,
     body.cmms-logged-in .row.content,
@@ -352,6 +382,15 @@ enum MobileFixes {
       font-size: 16px !important;
       line-height: 1.1 !important;
       text-align: center !important;
+    }
+    body.cmms-checkin #no-more-tables td.cmms-chk-wrap {
+      display: block !important;
+      padding: 12px 8px !important;
+      border: 0 !important;
+      width: 100% !important;
+    }
+    body.cmms-checkin #no-more-tables td.cmms-chk-wrap:before {
+      display: none !important;
     }
     body.cmms-logged-in #no-more-tables td.cmms-chk-cell-hide {
       display: none !important;
@@ -745,6 +784,27 @@ enum MobileFixes {
     }
     var cycler = document.getElementById("background_cycler");
     if (cycler) cycler.style.display = "none";
+    placeParentName();
+  }
+
+  function placeParentName() {
+    var existing = document.getElementById("cmms-parent-name");
+    if (!document.body.classList.contains("cmms-checkin")) {
+      if (existing) existing.style.display = "none";
+      return;
+    }
+    var src = document.querySelector(".profile_desk #lbd p, .profile_mob #lbd p, .profile_desk p");
+    var name = src ? (src.innerText || "").replace(/\s+/g, " ").replace(/[▼▾]/g, "").trim() : "";
+    var host = document.querySelector("nav.nav_cls #myNavbar, nav.nav_cls .navbar-collapse");
+    if (!host || !name) return;
+    var el = existing;
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "cmms-parent-name";
+      host.insertBefore(el, host.firstChild);
+    }
+    el.textContent = name;
+    el.style.display = "block";
   }
 
   function checkboxKind(cb) {
@@ -783,6 +843,18 @@ enum MobileFixes {
     btn.classList.toggle("is-absent", on && absent);
   }
 
+  function headerTextForCell(td) {
+    var title = td.getAttribute("data-title") || "";
+    if (title) return title;
+    var tr = td.parentNode;
+    var table = td.closest("table");
+    if (!tr || !table) return "";
+    var idx = Array.prototype.indexOf.call(tr.children, td);
+    var ths = table.querySelectorAll("thead th");
+    if (ths[idx]) return ths[idx].innerText || "";
+    return "";
+  }
+
   function groupCircleButtons(root) {
     var rows = root.querySelectorAll("tr");
     for (var r = 0; r < rows.length; r++) {
@@ -791,33 +863,36 @@ enum MobileFixes {
       var circles = tr.querySelectorAll(".cmms-chk-circle");
       if (!circles.length) continue;
       var tds = tr.querySelectorAll("td");
-      var nameCell = null;
       for (var t = 0; t < tds.length; t++) {
-        var cellText = (tds[t].innerText || "").replace(/\s+/g, " ").trim();
-        var onlyPhoto = tds[t].querySelector("img") && cellText.length < 2;
-        if (onlyPhoto) {
-          tds[t].classList.add("cmms-chk-cell-hide");
-          continue;
-        }
-        if (!nameCell && cellText && !tds[t].querySelector('input[type="checkbox"]')) {
-          nameCell = tds[t];
+        var label = (headerTextForCell(tds[t]) + " " + (tds[t].innerText || "")).replace(/\s+/g, " ").trim();
+        var onlyPhoto = tds[t].querySelector("img") && !(tds[t].innerText || "").replace(/\s+/g, "").length;
+        if (onlyPhoto || /allerg/i.test(label) || /\bname\b/i.test(label) || /^student\b/i.test(label)) {
+          if (!tds[t].querySelector(".cmms-chk-circle, input[type=checkbox]")) {
+            tds[t].classList.add("cmms-chk-cell-hide");
+          }
         }
       }
       var imgs = tr.querySelectorAll("img, .avatar");
       for (var p = 0; p < imgs.length; p++) {
-        var src = (imgs[p].getAttribute("src") || "") + " " + (imgs[p].getAttribute("alt") || "") + " " + (imgs[p].className || "");
-        if (/avatar|thumb|profile|student|user|person/i.test(src) || imgs[p].closest("td") === nameCell) {
-          imgs[p].classList.add("cmms-roster-photo-hide");
-        }
+        imgs[p].classList.add("cmms-roster-photo-hide");
       }
       var holder = document.createElement("div");
       holder.className = "cmms-chk-row";
-      if (!nameCell) nameCell = tr.querySelector("td") || tr;
-      nameCell.appendChild(holder);
+      var wrap = document.createElement("td");
+      wrap.className = "cmms-chk-wrap";
+      wrap.appendChild(holder);
+      tr.insertBefore(wrap, tr.firstChild);
       for (var c = 0; c < circles.length; c++) {
         var cell = circles[c].closest("td");
         holder.appendChild(circles[c]);
-        if (cell && cell !== nameCell) cell.classList.add("cmms-chk-cell-hide");
+        if (cell && cell !== wrap) cell.classList.add("cmms-chk-cell-hide");
+      }
+    }
+    var heads = root.querySelectorAll("thead th");
+    for (var h = 0; h < heads.length; h++) {
+      var ht = (heads[h].innerText || "").replace(/\s+/g, " ").trim();
+      if (/allerg/i.test(ht) || /\bname\b/i.test(ht) || /^student\b/i.test(ht)) {
+        heads[h].classList.add("cmms-chk-cell-hide");
       }
     }
   }

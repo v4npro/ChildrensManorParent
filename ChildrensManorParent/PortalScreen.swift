@@ -181,9 +181,6 @@ struct PortalScreen: View {
                         get: { model.startOnCheckIn },
                         set: { model.setStartOnCheckIn($0) }
                     ))
-                    Text("When this is on, login opens Check In, the circles are large, and the Manor Parent bar is hidden on that screen only. Turn it off to keep the bar everywhere, like before.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
                 }
                 Section("Go to") {
                     Button("Check In / Out") {

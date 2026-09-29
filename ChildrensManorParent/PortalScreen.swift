@@ -9,13 +9,19 @@ struct PortalScreen: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                topBar
+                if !model.hideAppBar {
+                    topBar
+                }
                 ZStack {
                     PortalWebView(model: model)
                         .ignoresSafeArea(edges: .bottom)
 
                     if let message = model.lastError {
                         errorBanner(message)
+                    }
+
+                    if model.hideAppBar, model.isUnlocked, !model.hidePortal {
+                        floatingGear
                     }
                 }
             }
@@ -25,6 +31,9 @@ struct PortalScreen: View {
             }
         }
         .background(schoolBlue.ignoresSafeArea())
+        .sheet(isPresented: $model.showSettings) {
+            settingsSheet
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .inactive:
@@ -113,6 +122,15 @@ struct PortalScreen: View {
                 .accessibilityLabel("Sign in with Face ID")
             }
 
+            Button {
+                model.showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("Settings")
+
             if model.isLoading || model.isAuthenticating {
                 ProgressView()
                     .tint(.white)
@@ -132,6 +150,70 @@ struct PortalScreen: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(schoolBlue)
+    }
+
+    private var floatingGear: some View {
+        VStack {
+            HStack {
+                Spacer()
+                Button {
+                    model.showSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(schoolBlue.opacity(0.92), in: Circle())
+                }
+                .accessibilityLabel("Settings")
+                .padding(.trailing, 12)
+                .padding(.top, 8)
+            }
+            Spacer()
+        }
+    }
+
+    private var settingsSheet: some View {
+        NavigationStack {
+            List {
+                Section("After login") {
+                    Toggle("Open Check In / Out", isOn: Binding(
+                        get: { model.startOnCheckIn },
+                        set: { model.setStartOnCheckIn($0) }
+                    ))
+                }
+                Section("App bar") {
+                    Toggle("Hide Manor Parent bar", isOn: Binding(
+                        get: { model.hideAppBar },
+                        set: { model.setHideAppBar($0) }
+                    ))
+                    Text("Turn this off to bring back Back, Home, and Reload. When it is on, use the gear to open settings.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Section("Go to") {
+                    Button("Check In / Out") {
+                        model.showSettings = false
+                        model.loadCheckIn()
+                    }
+                    Button("Dashboard") {
+                        model.showSettings = false
+                        model.webView?.load(URLRequest(url: URL(string: "https://portal.childrensmanor.com/tp/ur/dashboard")!))
+                    }
+                    Button("Parent login") {
+                        model.showSettings = false
+                        model.loadHome()
+                    }
+                }
+            }
+            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { model.showSettings = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     private func errorBanner(_ message: String) -> some View {

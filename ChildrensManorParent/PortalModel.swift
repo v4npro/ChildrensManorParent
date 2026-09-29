@@ -4,6 +4,7 @@ import WebKit
 @MainActor
 final class PortalModel: ObservableObject {
     static let startURL = URL(string: "https://portal.childrensmanor.com/tp/pa/login")!
+    static let checkInURL = URL(string: "https://portal.childrensmanor.com/tp/ur/signin_out")!
 
     @Published var canGoBack = false
     @Published var canGoForward = false
@@ -15,8 +16,13 @@ final class PortalModel: ObservableObject {
     @Published var isAuthenticating = false
     @Published var isUnlocked = false
     @Published var hidePortal = true
+    @Published var startOnCheckIn = AppSettings.startOnCheckIn
+    @Published var hideAppBar = AppSettings.hideAppBar
+    @Published var showSettings = false
 
     weak var webView: WKWebView?
+    private var wasLoginPage = true
+    private var didRedirectToCheckIn = false
 
     func goBack() {
         webView?.goBack()
@@ -40,6 +46,21 @@ final class PortalModel: ObservableObject {
         webView?.load(URLRequest(url: Self.startURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 30))
     }
 
+    func loadCheckIn() {
+        lastError = nil
+        webView?.load(URLRequest(url: Self.checkInURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 30))
+    }
+
+    func setStartOnCheckIn(_ value: Bool) {
+        AppSettings.startOnCheckIn = value
+        startOnCheckIn = value
+    }
+
+    func setHideAppBar(_ value: Bool) {
+        AppSettings.hideAppBar = value
+        hideAppBar = value
+    }
+
     func sync(from webView: WKWebView) {
         canGoBack = webView.canGoBack
         canGoForward = webView.canGoForward
@@ -57,6 +78,18 @@ final class PortalModel: ObservableObject {
         if isUnlocked {
             fillLoginIfNeeded()
         }
+        let nowLogin = isLoginPage
+        if nowLogin {
+            didRedirectToCheckIn = false
+        }
+        if wasLoginPage, !nowLogin, startOnCheckIn, !Self.isCheckIn(webView.url), !didRedirectToCheckIn {
+            didRedirectToCheckIn = true
+            loadCheckIn()
+        }
+        if Self.isCheckIn(webView.url) {
+            didRedirectToCheckIn = true
+        }
+        wasLoginPage = nowLogin
     }
 
     func coverForAppSwitch() {
@@ -119,5 +152,9 @@ final class PortalModel: ObservableObject {
     static func isLogin(_ url: URL?) -> Bool {
         guard let path = url?.path.lowercased() else { return true }
         return path.contains("/login") || path.contains("forgotpassword")
+    }
+
+    static func isCheckIn(_ url: URL?) -> Bool {
+        (url?.path.lowercased() ?? "").contains("signin_out")
     }
 }

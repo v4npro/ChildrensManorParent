@@ -161,14 +161,17 @@ enum MobileFixes {
       flex-wrap: wrap !important;
       align-items: center !important;
       gap: 8px !important;
-      padding: 10px 0 4px !important;
+      padding: 10px 28px 8px 0 !important;
       color: #fff !important;
       list-style: none !important;
     }
     body.cmms-logged-in .cmms-code-row .cmms-code-label {
-      min-width: 102px !important;
+      min-width: 0 !important;
+      width: 100% !important;
       font-weight: 600 !important;
-      opacity: 0.85 !important;
+      opacity: 0.9 !important;
+      font-size: 13px !important;
+      letter-spacing: 0.02em !important;
     }
     body.cmms-logged-in .cmms-code-row input {
       flex: 1 1 140px !important;
@@ -186,13 +189,21 @@ enum MobileFixes {
     }
     body.cmms-logged-in .cmms-code-row button {
       min-height: 44px !important;
-      padding: 0 14px !important;
+      padding: 0 16px !important;
+      margin-right: 12px !important;
       border: 0 !important;
       border-radius: 10px !important;
       background: #fff !important;
       color: #005bab !important;
       font-weight: 700 !important;
       font-size: 15px !important;
+    }
+    body.cmms-checkin nav.nav_cls,
+    body.cmms-checkin .profile_desk,
+    body.cmms-checkin .left_side_cls,
+    body.cmms-checkin .right_side_cls,
+    body.cmms-checkin .navbar-brand {
+      display: none !important;
     }
     body.cmms-logged-in .student_detail,
     body.cmms-logged-in .row.content,
@@ -329,16 +340,16 @@ enum MobileFixes {
       width: 100% !important;
     }
     body.cmms-logged-in .cmms-chk-btn.cmms-chk-circle {
-      width: 68px !important;
-      height: 68px !important;
-      min-width: 68px !important;
-      min-height: 68px !important;
-      max-width: 68px !important;
+      width: 92px !important;
+      height: 92px !important;
+      min-width: 92px !important;
+      min-height: 92px !important;
+      max-width: 92px !important;
       margin: 0 !important;
       padding: 0 !important;
       border-radius: 50% !important;
-      flex: 0 0 68px !important;
-      font-size: 13px !important;
+      flex: 0 0 92px !important;
+      font-size: 16px !important;
       line-height: 1.1 !important;
       text-align: center !important;
     }
@@ -599,7 +610,7 @@ enum MobileFixes {
     row.innerHTML = "";
     var label = document.createElement("span");
     label.className = "cmms-code-label";
-    label.textContent = "Code:";
+    label.textContent = "Code reminder";
     row.appendChild(label);
     if (!editing && code) {
       var value = document.createElement("span");
@@ -623,7 +634,7 @@ enum MobileFixes {
     input.autocapitalize = "characters";
     input.placeholder = "Enter code";
     input.value = code;
-    input.setAttribute("aria-label", "Classroom code");
+    input.setAttribute("aria-label", "Code reminder");
     row.appendChild(input);
     var save = document.createElement("button");
     save.type = "button";
@@ -715,9 +726,15 @@ enum MobileFixes {
   function stripBannerBackground() {
     if (isLoginPage()) {
       document.body.classList.remove("cmms-logged-in");
+      document.body.classList.remove("cmms-checkin");
       return;
     }
     document.body.classList.add("cmms-logged-in");
+    if (/signin_out/i.test(location.pathname)) {
+      document.body.classList.add("cmms-checkin");
+    } else {
+      document.body.classList.remove("cmms-checkin");
+    }
     var cycler = document.getElementById("background_cycler");
     if (cycler) cycler.style.display = "none";
   }

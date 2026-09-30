@@ -117,16 +117,20 @@ enum MobileFixes {
       padding: 0 !important;
     }
     body.cmms-logged-in nav.nav_cls .nav-pills {
-      margin: 0 !important;
+      margin: 0 0 10px !important;
+      padding: 10px 14px 8px !important;
+      background: #fff !important;
+      border-radius: 14px !important;
+      list-style: none !important;
     }
     body.cmms-logged-in nav.nav_cls .nav-pills > li {
       float: none !important;
       width: 100% !important;
     }
     body.cmms-logged-in nav.nav_cls .nav-pills > li > a {
-      color: #fff !important;
+      color: #1a1a1a !important;
       background: transparent !important;
-      padding: 8px 0 !important;
+      padding: 6px 0 !important;
       font-size: 16px !important;
       line-height: 1.35 !important;
     }
@@ -136,33 +140,65 @@ enum MobileFixes {
       opacity: 0.85 !important;
       font-weight: 600 !important;
       margin: 0 8px 0 0 !important;
+      color: #333 !important;
     }
     body.cmms-logged-in nav.nav_cls hr {
-      border-color: rgba(255,255,255,0.25) !important;
-      margin: 12px 0 !important;
+      display: none !important;
     }
-    body.cmms-logged-in nav.nav_cls .in_out {
-      margin: 8px 0 0 !important;
+    body.cmms-logged-in .cmms-shortcut-row {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: stretch !important;
+      gap: 8px !important;
+      width: 100% !important;
+      margin: 4px 0 0 !important;
+    }
+    body.cmms-logged-in .cmms-shortcut-row .in_out {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
     body.cmms-logged-in nav.nav_cls .in_out a,
     body.cmms-logged-in nav.nav_cls .in_out button,
-    body.cmms-logged-in nav.nav_cls .in_out .btn {
-      display: block !important;
+    body.cmms-logged-in nav.nav_cls .in_out .btn,
+    body.cmms-logged-in .cmms-shortcut-row .in_out a,
+    body.cmms-logged-in .cmms-shortcut-row .in_out button,
+    body.cmms-logged-in .cmms-shortcut-row .in_out .btn {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
       width: 100% !important;
       max-width: 100% !important;
+      min-height: 68px !important;
+      height: 68px !important;
+      margin: 0 !important;
+      padding: 8px 6px !important;
       border: 0 !important;
-      border-radius: 12px !important;
-      min-height: 48px !important;
-      font-size: 17px !important;
-      font-weight: 600 !important;
+      border-radius: 14px !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      line-height: 1.15 !important;
+      text-align: center !important;
+      white-space: normal !important;
+    }
+    body.cmms-logged-in .cmms-shortcut-row .parent_noti {
+      min-width: 16px !important;
+      min-height: 16px !important;
+      margin: 0 0 0 4px !important;
+      padding: 1px 5px !important;
+      font-size: 10px !important;
+    }
+    body.cmms-checkin .cmms-shortcut-row {
+      display: none !important;
     }
     body.cmms-logged-in .cmms-code-row {
       display: flex !important;
       flex-wrap: wrap !important;
       align-items: center !important;
       gap: 8px !important;
-      padding: 10px 28px 8px 0 !important;
-      color: #fff !important;
+      padding: 8px 0 4px !important;
+      color: #1a1a1a !important;
       list-style: none !important;
     }
     body.cmms-logged-in .cmms-code-row .cmms-code-label {
@@ -181,7 +217,7 @@ enum MobileFixes {
       padding: 8px 12px !important;
       font-size: 16px !important;
       color: #111 !important;
-      background: #fff !important;
+      background: #eef3f8 !important;
     }
     body.cmms-logged-in .cmms-code-row .cmms-code-value {
       flex: 1 1 auto !important;
@@ -190,11 +226,12 @@ enum MobileFixes {
     body.cmms-logged-in .cmms-code-row button {
       min-height: 44px !important;
       padding: 0 16px !important;
-      margin-right: 12px !important;
+      margin-right: 0 !important;
+      margin-left: auto !important;
       border: 0 !important;
       border-radius: 10px !important;
-      background: #fff !important;
-      color: #005bab !important;
+      background: #005bab !important;
+      color: #fff !important;
       font-weight: 700 !important;
       font-size: 15px !important;
     }
@@ -301,31 +338,39 @@ enum MobileFixes {
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
-      flex: 0 0 auto !important;
+      flex: 1 1 0 !important;
       float: none !important;
-      width: auto !important;
+      width: 0 !important;
       max-width: none !important;
-      min-width: 64px !important;
+      min-width: 0 !important;
       margin: 0 !important;
       margin-bottom: 0 !important;
       text-align: center !important;
-      font-size: 11px !important;
+      font-size: 10px !important;
       line-height: 1.15 !important;
-      padding: 8px 10px 10px !important;
+      padding: 8px 2px 8px !important;
+      padding-left: 2px !important;
+      padding-right: 2px !important;
       white-space: nowrap !important;
     }
     body.cmms-logged-in .tab_cls > div a.nav-item.nav-link img,
     body.cmms-logged-in .tab_cls .nav-link img {
       display: block !important;
-      margin: 0 auto 4px !important;
-      margin-right: 0 !important;
       width: 22px !important;
       height: 22px !important;
       flex-shrink: 0 !important;
+      margin-top: 0 !important;
+      margin-bottom: 4px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
     }
     body.cmms-logged-in .tab_cls > div a.nav-item.nav-link > span {
       display: block !important;
+      width: 100% !important;
+      text-align: center !important;
       white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
     body.cmms-logged-in .tab_cls > div a.nav-item.nav-link.active:after {
       display: none !important;
@@ -738,11 +783,44 @@ enum MobileFixes {
     for (var i = 0; i < links.length; i++) {
       links[i].style.setProperty("display", "flex", "important");
       links[i].style.setProperty("flex-direction", "column", "important");
-      links[i].style.setProperty("flex", "0 0 auto", "important");
-      links[i].style.setProperty("width", "auto", "important");
+      links[i].style.setProperty("align-items", "center", "important");
+      links[i].style.setProperty("justify-content", "center", "important");
+      links[i].style.setProperty("flex", "1 1 0", "important");
+      links[i].style.setProperty("width", "0", "important");
+      links[i].style.setProperty("min-width", "0", "important");
       links[i].style.setProperty("max-width", "none", "important");
       links[i].style.setProperty("margin-bottom", "0", "important");
+      links[i].style.setProperty("padding-left", "2px", "important");
+      links[i].style.setProperty("padding-right", "2px", "important");
+      links[i].style.setProperty("text-align", "center", "important");
+      var imgs = links[i].querySelectorAll("img");
+      for (var j = 0; j < imgs.length; j++) {
+        imgs[j].style.setProperty("margin-left", "auto", "important");
+        imgs[j].style.setProperty("margin-right", "auto", "important");
+        imgs[j].style.setProperty("margin-bottom", "4px", "important");
+        imgs[j].style.setProperty("display", "block", "important");
+      }
     }
+  }
+
+  function groupShortcutButtons() {
+    var nav = document.querySelector("nav.nav_cls #myNavbar") || document.querySelector("nav.nav_cls .navbar-collapse");
+    if (!nav) return;
+    var buttons = [];
+    var nodes = nav.querySelectorAll(".in_out");
+    for (var i = 0; i < nodes.length; i++) buttons.push(nodes[i]);
+    if (buttons.length < 2) return;
+    var existing = nav.querySelector(".cmms-shortcut-row");
+    if (existing) {
+      for (var b = 0; b < buttons.length; b++) {
+        if (buttons[b].parentNode !== existing) existing.appendChild(buttons[b]);
+      }
+      return;
+    }
+    var row = document.createElement("div");
+    row.className = "cmms-shortcut-row";
+    buttons[0].parentNode.insertBefore(row, buttons[0]);
+    for (var j = 0; j < buttons.length; j++) row.appendChild(buttons[j]);
   }
 
   function shortenTabLabels() {
@@ -954,6 +1032,7 @@ enum MobileFixes {
     stripBannerBackground();
     shortenTabLabels();
     forceHorizontalTabs();
+    groupShortcutButtons();
     ensureCodeRow();
     buttonizeCheckboxes();
     enlargeTaps();

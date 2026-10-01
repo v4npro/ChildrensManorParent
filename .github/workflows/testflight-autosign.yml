@@ -223,13 +223,6 @@ jobs:
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
           ls -la "$RUNNER_TEMP/export"
 
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ChildrensManorParent-ipa
-          path: ${{ runner.temp }}/export/*.ipa
-          if-no-files-found: error
-
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v5
         with:

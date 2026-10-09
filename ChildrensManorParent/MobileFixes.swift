@@ -5,8 +5,21 @@ enum MobileFixes {
     /// without posting credentials anywhere except the school's own origin.
     static let javaScript = #"""
 (function () {
+  var htmlEl = document.documentElement;
+  var firstPaint = !document.getElementById("cmms-mobile-fixes");
+  if (firstPaint) {
+    htmlEl.classList.add("cmms-boot");
+    htmlEl.style.visibility = "hidden";
+  }
+  var path0 = (location.pathname || "").toLowerCase();
+  var isLogin0 = /\/login|forgotpassword/i.test(path0);
+  if (!isLogin0) htmlEl.classList.add("cmms-logged-in");
+  else htmlEl.classList.remove("cmms-logged-in", "cmms-checkin");
+  if (window.__cmmsSimpleCheckIn && /signin_out/i.test(path0)) htmlEl.classList.add("cmms-checkin");
+
   var css = `
-    html { -webkit-text-size-adjust: 100%; }
+    html { -webkit-text-size-adjust: 100%; background: #005bab; }
+    html.cmms-boot { visibility: hidden !important; }
     body, html { min-width: 0 !important; max-width: 100% !important; overflow-x: hidden !important; }
     img { max-width: 100% !important; height: auto !important; }
 
@@ -70,28 +83,28 @@ enum MobileFixes {
     .bg-signin .a1, .bg-signin a { color: #fff !important; }
 
     /* ---- Logged-in dashboard (from manor.txt) ---- */
-    body.cmms-logged-in {
+    html.cmms-logged-in body {
       background: #eef2f6 !important;
       background-image: none !important;
     }
-    body.cmms-logged-in #background_cycler,
-    body.cmms-logged-in #background_cycler img {
+    html.cmms-logged-in body #background_cycler,
+    html.cmms-logged-in body #background_cycler img {
       display: none !important;
     }
-    body.cmms-logged-in .profile_image.profile_mob,
-    body.cmms-logged-in .profile_mob,
-    body.cmms-logged-in nav.nav_cls .navbar-header,
-    body.cmms-logged-in nav.nav_cls .navbar-brand,
-    body.cmms-logged-in .left_side_cls {
+    html.cmms-logged-in body .profile_image.profile_mob,
+    html.cmms-logged-in body .profile_mob,
+    html.cmms-logged-in body nav.nav_cls .navbar-header,
+    html.cmms-logged-in body nav.nav_cls .navbar-brand,
+    html.cmms-logged-in body .left_side_cls {
       display: none !important;
       height: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
       overflow: hidden !important;
     }
-    body.cmms-logged-in nav.nav_cls,
-    body.cmms-logged-in nav.nav_cls.navbar-inverse,
-    body.cmms-logged-in .respons_nav {
+    html.cmms-logged-in body nav.nav_cls,
+    html.cmms-logged-in body nav.nav_cls.navbar-inverse,
+    html.cmms-logged-in body .respons_nav {
       display: block !important;
       background: #005bab !important;
       background-image: none !important;
@@ -100,52 +113,69 @@ enum MobileFixes {
       min-height: 0 !important;
       box-shadow: none !important;
     }
-    body.cmms-logged-in nav.nav_cls .navbar-collapse,
-    body.cmms-logged-in #myNavbar {
+    html.cmms-logged-in body nav.nav_cls .navbar-collapse,
+    html.cmms-logged-in body #myNavbar {
       display: block !important;
       height: auto !important;
       padding: 16px 16px 18px !important;
       background: #005bab !important;
       overflow: visible !important;
     }
-    body.cmms-logged-in nav.nav_cls h5 {
-      color: #fff !important;
-      font-size: 12px !important;
-      letter-spacing: 0.06em !important;
+    html.cmms-logged-in body nav.nav_cls h5 {
+      color: rgba(255,255,255,0.72) !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.12em !important;
       text-transform: uppercase !important;
-      margin: 0 0 8px !important;
+      margin: 0 0 10px !important;
       padding: 0 !important;
     }
-    body.cmms-logged-in nav.nav_cls .nav-pills {
-      margin: 0 0 10px !important;
-      padding: 10px 14px 8px !important;
-      background: #fff !important;
-      border-radius: 14px !important;
+    html.cmms-logged-in body nav.nav_cls .nav-pills {
+      margin: 0 0 12px !important;
+      padding: 4px 16px 6px !important;
+      background: linear-gradient(180deg, #ffffff 0%, #f3f8fd 100%) !important;
+      border-radius: 18px !important;
       list-style: none !important;
+      box-shadow: 0 10px 28px rgba(0, 28, 64, 0.22), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+      border: 1px solid rgba(255,255,255,0.55) !important;
+      overflow: hidden !important;
     }
-    body.cmms-logged-in nav.nav_cls .nav-pills > li {
+    html.cmms-logged-in body nav.nav_cls .nav-pills > li {
       float: none !important;
       width: 100% !important;
+      margin: 0 !important;
     }
-    body.cmms-logged-in nav.nav_cls .nav-pills > li > a {
-      color: #1a1a1a !important;
+    html.cmms-logged-in body nav.nav_cls .nav-pills > li > a {
+      display: flex !important;
+      align-items: baseline !important;
+      justify-content: flex-start !important;
+      gap: 10px !important;
+      color: #0d2a4a !important;
       background: transparent !important;
-      padding: 6px 0 !important;
+      padding: 12px 0 !important;
       font-size: 16px !important;
-      line-height: 1.35 !important;
-    }
-    body.cmms-logged-in nav.nav_cls .nav-pills label {
-      display: inline-block !important;
-      min-width: 102px !important;
-      opacity: 0.85 !important;
       font-weight: 600 !important;
-      margin: 0 8px 0 0 !important;
-      color: #333 !important;
+      line-height: 1.35 !important;
+      border-bottom: 1px solid rgba(0, 91, 171, 0.08) !important;
     }
-    body.cmms-logged-in nav.nav_cls hr {
+    html.cmms-logged-in body nav.nav_cls .nav-pills > li:last-child > a {
+      border-bottom: 0 !important;
+    }
+    html.cmms-logged-in body nav.nav_cls .nav-pills label {
+      display: inline-block !important;
+      min-width: 96px !important;
+      opacity: 1 !important;
+      font-weight: 700 !important;
+      font-size: 11px !important;
+      letter-spacing: 0.06em !important;
+      text-transform: uppercase !important;
+      margin: 0 4px 0 0 !important;
+      color: #5b7c9a !important;
+    }
+    html.cmms-logged-in body nav.nav_cls hr {
       display: none !important;
     }
-    body.cmms-logged-in .cmms-shortcut-row {
+    html.cmms-logged-in body .cmms-shortcut-row {
       display: flex !important;
       flex-direction: row !important;
       align-items: stretch !important;
@@ -153,18 +183,18 @@ enum MobileFixes {
       width: 100% !important;
       margin: 4px 0 0 !important;
     }
-    body.cmms-logged-in .cmms-shortcut-row .in_out {
+    html.cmms-logged-in body .cmms-shortcut-row .in_out {
       flex: 1 1 0 !important;
       min-width: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
     }
-    body.cmms-logged-in nav.nav_cls .in_out a,
-    body.cmms-logged-in nav.nav_cls .in_out button,
-    body.cmms-logged-in nav.nav_cls .in_out .btn,
-    body.cmms-logged-in .cmms-shortcut-row .in_out a,
-    body.cmms-logged-in .cmms-shortcut-row .in_out button,
-    body.cmms-logged-in .cmms-shortcut-row .in_out .btn {
+    html.cmms-logged-in body nav.nav_cls .in_out a,
+    html.cmms-logged-in body nav.nav_cls .in_out button,
+    html.cmms-logged-in body nav.nav_cls .in_out .btn,
+    html.cmms-logged-in body .cmms-shortcut-row .in_out a,
+    html.cmms-logged-in body .cmms-shortcut-row .in_out button,
+    html.cmms-logged-in body .cmms-shortcut-row .in_out .btn {
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -182,26 +212,29 @@ enum MobileFixes {
       text-align: center !important;
       white-space: normal !important;
     }
-    body.cmms-logged-in .cmms-shortcut-row .parent_noti {
+    html.cmms-logged-in body .cmms-shortcut-row .parent_noti {
       min-width: 16px !important;
       min-height: 16px !important;
       margin: 0 0 0 4px !important;
       padding: 1px 5px !important;
       font-size: 10px !important;
     }
-    body.cmms-checkin .cmms-shortcut-row {
+    html.cmms-checkin body .cmms-shortcut-row {
       display: none !important;
     }
-    body.cmms-logged-in .cmms-code-row {
+    html.cmms-logged-in body .cmms-code-row {
       display: flex !important;
       flex-wrap: wrap !important;
       align-items: center !important;
       gap: 8px !important;
-      padding: 8px 0 4px !important;
-      color: #1a1a1a !important;
+      padding: 10px 12px !important;
+      margin: 6px 0 10px !important;
+      color: #0d2a4a !important;
       list-style: none !important;
+      background: rgba(0, 91, 171, 0.07) !important;
+      border-radius: 12px !important;
     }
-    body.cmms-logged-in .cmms-code-row .cmms-code-label {
+    html.cmms-logged-in body .cmms-code-row .cmms-code-label {
       min-width: 0 !important;
       width: 100% !important;
       font-weight: 600 !important;
@@ -209,7 +242,7 @@ enum MobileFixes {
       font-size: 13px !important;
       letter-spacing: 0.02em !important;
     }
-    body.cmms-logged-in .cmms-code-row input {
+    html.cmms-logged-in body .cmms-code-row input {
       flex: 1 1 140px !important;
       min-height: 44px !important;
       border: 0 !important;
@@ -219,11 +252,11 @@ enum MobileFixes {
       color: #111 !important;
       background: #eef3f8 !important;
     }
-    body.cmms-logged-in .cmms-code-row .cmms-code-value {
+    html.cmms-logged-in body .cmms-code-row .cmms-code-value {
       flex: 1 1 auto !important;
       font-size: 16px !important;
     }
-    body.cmms-logged-in .cmms-code-row button {
+    html.cmms-logged-in body .cmms-code-row button {
       min-height: 44px !important;
       padding: 0 16px !important;
       margin-right: 0 !important;
@@ -235,20 +268,20 @@ enum MobileFixes {
       font-weight: 700 !important;
       font-size: 15px !important;
     }
-    body.cmms-checkin nav.nav_cls {
+    html.cmms-checkin body nav.nav_cls {
       display: block !important;
     }
-    body.cmms-checkin nav.nav_cls .in_out,
-    body.cmms-checkin nav.nav_cls hr,
-    body.cmms-checkin .profile_desk,
-    body.cmms-checkin .profile_mob,
-    body.cmms-checkin .navbar-brand,
-    body.cmms-checkin .left_side_cls,
-    body.cmms-checkin .right_side_cls,
-    body.cmms-checkin .parent_contact {
+    html.cmms-checkin body nav.nav_cls .in_out,
+    html.cmms-checkin body nav.nav_cls hr,
+    html.cmms-checkin body .profile_desk,
+    html.cmms-checkin body .profile_mob,
+    html.cmms-checkin body .navbar-brand,
+    html.cmms-checkin body .left_side_cls,
+    html.cmms-checkin body .right_side_cls,
+    html.cmms-checkin body .parent_contact {
       display: none !important;
     }
-    body.cmms-checkin #cmms-parent-name {
+    html.cmms-checkin body #cmms-parent-name {
       display: block !important;
       text-align: left !important;
       color: #fff !important;
@@ -256,27 +289,27 @@ enum MobileFixes {
       font-weight: 700 !important;
       padding: 2px 0 10px !important;
     }
-    body.cmms-checkin .cmms-chk-btn.cmms-chk-circle {
+    html.cmms-checkin body .cmms-chk-btn.cmms-chk-circle {
       background: #fff !important;
       color: #005bab !important;
       border: 3px solid #005bab !important;
       box-sizing: border-box !important;
     }
-    body.cmms-checkin .cmms-chk-btn.cmms-chk-circle.is-on {
+    html.cmms-checkin body .cmms-chk-btn.cmms-chk-circle.is-on {
       background: #4da23e !important;
       border-color: #4da23e !important;
       color: #fff !important;
     }
-    body.cmms-checkin .cmms-chk-btn.cmms-chk-circle.is-absent {
+    html.cmms-checkin body .cmms-chk-btn.cmms-chk-circle.is-absent {
       background: #c7332c !important;
       border-color: #c7332c !important;
       color: #fff !important;
     }
-    body.cmms-logged-in .student_detail,
-    body.cmms-logged-in .row.content,
-    body.cmms-logged-in .mid_section,
-    body.cmms-logged-in .mid_section.col-12,
-    body.cmms-logged-in .mid_section.col-sm-8 {
+    html.cmms-logged-in body .student_detail,
+    html.cmms-logged-in body .row.content,
+    html.cmms-logged-in body .mid_section,
+    html.cmms-logged-in body .mid_section.col-12,
+    html.cmms-logged-in body .mid_section.col-sm-8 {
       width: 100% !important;
       max-width: 100% !important;
       float: none !important;
@@ -285,11 +318,11 @@ enum MobileFixes {
       padding-right: 0 !important;
       left: auto !important;
     }
-    body.cmms-logged-in .mid_section {
+    html.cmms-logged-in body .mid_section {
       padding: 8px 12px 24px !important;
       background: #fff !important;
     }
-    body.cmms-logged-in .profile_desk {
+    html.cmms-logged-in body .profile_desk {
       display: flex !important;
       align-items: center !important;
       justify-content: flex-start !important;
@@ -300,26 +333,26 @@ enum MobileFixes {
       float: none !important;
       width: auto !important;
     }
-    body.cmms-logged-in .profile_desk .avatar {
+    html.cmms-logged-in body .profile_desk .avatar {
       width: 40px !important;
       height: 40px !important;
       border-radius: 50% !important;
       object-fit: cover !important;
     }
-    body.cmms-logged-in .profile_desk p {
+    html.cmms-logged-in body .profile_desk p {
       margin: 0 !important;
       font-size: 16px !important;
       font-weight: 600 !important;
       color: #005bab !important;
     }
-    body.cmms-logged-in nav.tab_cls,
-    body.cmms-logged-in .tab_cls {
+    html.cmms-logged-in body nav.tab_cls,
+    html.cmms-logged-in body .tab_cls {
       margin: 0 0 8px !important;
       overflow: hidden !important;
     }
-    body.cmms-logged-in nav.tab_cls .nav.nav-tabs.nav-fill,
-    body.cmms-logged-in .tab_cls > .nav.nav-tabs,
-    body.cmms-logged-in .tab_cls .nav-tabs {
+    html.cmms-logged-in body nav.tab_cls .nav.nav-tabs.nav-fill,
+    html.cmms-logged-in body .tab_cls > .nav.nav-tabs,
+    html.cmms-logged-in body .tab_cls .nav-tabs {
       display: flex !important;
       flex-direction: row !important;
       flex-wrap: nowrap !important;
@@ -331,9 +364,9 @@ enum MobileFixes {
       min-width: 0 !important;
       border: none !important;
     }
-    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link,
-    body.cmms-logged-in .tab_cls a.nav-item.nav-link,
-    body.cmms-logged-in .tab_cls .nav-link {
+    html.cmms-logged-in body .tab_cls > div a.nav-item.nav-link,
+    html.cmms-logged-in body .tab_cls a.nav-item.nav-link,
+    html.cmms-logged-in body .tab_cls .nav-link {
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
@@ -353,8 +386,8 @@ enum MobileFixes {
       padding-right: 2px !important;
       white-space: nowrap !important;
     }
-    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link img,
-    body.cmms-logged-in .tab_cls .nav-link img {
+    html.cmms-logged-in body .tab_cls > div a.nav-item.nav-link img,
+    html.cmms-logged-in body .tab_cls .nav-link img {
       display: block !important;
       width: 22px !important;
       height: 22px !important;
@@ -364,7 +397,7 @@ enum MobileFixes {
       margin-left: auto !important;
       margin-right: auto !important;
     }
-    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link > span {
+    html.cmms-logged-in body .tab_cls > div a.nav-item.nav-link > span {
       display: block !important;
       width: 100% !important;
       text-align: center !important;
@@ -372,25 +405,25 @@ enum MobileFixes {
       overflow: hidden !important;
       text-overflow: ellipsis !important;
     }
-    body.cmms-logged-in .tab_cls > div a.nav-item.nav-link.active:after {
+    html.cmms-logged-in body .tab_cls > div a.nav-item.nav-link.active:after {
       display: none !important;
     }
 
-    body.cmms-logged-in #no-more-tables input[type="checkbox"] {
+    html.cmms-logged-in body #no-more-tables input[type="checkbox"] {
       position: absolute !important;
       opacity: 0 !important;
       width: 1px !important;
       height: 1px !important;
       pointer-events: none !important;
     }
-    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-btn) {
+    html.cmms-logged-in body #no-more-tables td:has(.cmms-chk-btn) {
       padding-left: 12px !important;
       padding-right: 12px !important;
     }
-    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-btn):before {
+    html.cmms-logged-in body #no-more-tables td:has(.cmms-chk-btn):before {
       display: none !important;
     }
-    body.cmms-logged-in .cmms-chk-btn {
+    html.cmms-logged-in body .cmms-chk-btn {
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -405,7 +438,7 @@ enum MobileFixes {
       font-size: 17px !important;
       font-weight: 700 !important;
     }
-    body.cmms-logged-in .cmms-chk-row {
+    html.cmms-logged-in body .cmms-chk-row {
       display: flex !important;
       flex-direction: row !important;
       justify-content: space-evenly !important;
@@ -414,7 +447,7 @@ enum MobileFixes {
       padding: 10px 8px 14px !important;
       width: 100% !important;
     }
-    body.cmms-logged-in .cmms-chk-btn.cmms-chk-circle {
+    html.cmms-logged-in body .cmms-chk-btn.cmms-chk-circle {
       width: 92px !important;
       height: 92px !important;
       min-width: 92px !important;
@@ -428,45 +461,45 @@ enum MobileFixes {
       line-height: 1.1 !important;
       text-align: center !important;
     }
-    body.cmms-checkin #no-more-tables td.cmms-chk-wrap {
+    html.cmms-checkin body #no-more-tables td.cmms-chk-wrap {
       display: block !important;
       padding: 12px 8px !important;
       border: 0 !important;
       width: 100% !important;
     }
-    body.cmms-checkin #no-more-tables td.cmms-chk-wrap:before {
+    html.cmms-checkin body #no-more-tables td.cmms-chk-wrap:before {
       display: none !important;
     }
-    body.cmms-logged-in #no-more-tables td.cmms-chk-cell-hide {
+    html.cmms-logged-in body #no-more-tables td.cmms-chk-cell-hide {
       display: none !important;
       height: 0 !important;
       padding: 0 !important;
       margin: 0 !important;
       border: 0 !important;
     }
-    body.cmms-logged-in #no-more-tables img.avatar,
-    body.cmms-logged-in #no-more-tables img[src*="default_thumb"],
-    body.cmms-logged-in #no-more-tables img[src*="thumb"],
-    body.cmms-logged-in #no-more-tables img[alt*="Profile"],
-    body.cmms-logged-in #no-more-tables img[alt*="Student"],
-    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-row) > img,
-    body.cmms-logged-in #no-more-tables td:has(.cmms-chk-row) img,
-    body.cmms-logged-in .cmms-roster-photo-hide {
+    html.cmms-logged-in body #no-more-tables img.avatar,
+    html.cmms-logged-in body #no-more-tables img[src*="default_thumb"],
+    html.cmms-logged-in body #no-more-tables img[src*="thumb"],
+    html.cmms-logged-in body #no-more-tables img[alt*="Profile"],
+    html.cmms-logged-in body #no-more-tables img[alt*="Student"],
+    html.cmms-logged-in body #no-more-tables td:has(.cmms-chk-row) > img,
+    html.cmms-logged-in body #no-more-tables td:has(.cmms-chk-row) img,
+    html.cmms-logged-in body .cmms-roster-photo-hide {
       display: none !important;
       width: 0 !important;
       height: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
     }
-    body.cmms-logged-in .cmms-chk-btn.is-on {
+    html.cmms-logged-in body .cmms-chk-btn.is-on {
       background: #4da23e !important;
       color: #fff !important;
     }
-    body.cmms-logged-in .cmms-chk-btn.is-absent {
+    html.cmms-logged-in body .cmms-chk-btn.is-absent {
       background: #c7332c !important;
       color: #fff !important;
     }
-    body.cmms-logged-in .breadcrumb a {
+    html.cmms-logged-in body .breadcrumb a {
       display: inline-flex !important;
       align-items: center !important;
       min-height: 44px !important;
@@ -475,21 +508,21 @@ enum MobileFixes {
       background: #005bab !important;
       color: #fff !important;
     }
-    body.cmms-logged-in .tab-content,
-    body.cmms-logged-in #nav-tabContent,
-    body.cmms-logged-in .tab-pane {
+    html.cmms-logged-in body .tab-content,
+    html.cmms-logged-in body #nav-tabContent,
+    html.cmms-logged-in body .tab-pane {
       padding-left: 0 !important;
       padding-right: 0 !important;
     }
-    body.cmms-logged-in .table-box,
-    body.cmms-logged-in .table-box1 {
+    html.cmms-logged-in body .table-box,
+    html.cmms-logged-in body .table-box1 {
       overflow-x: auto !important;
       -webkit-overflow-scrolling: touch;
     }
-    body.cmms-logged-in #calendar .fc-view > table {
+    html.cmms-logged-in body #calendar .fc-view > table {
       width: 100% !important;
     }
-    body.cmms-logged-in .right_side_cls {
+    html.cmms-logged-in body .right_side_cls {
       display: block !important;
       width: 100% !important;
       float: none !important;
@@ -498,11 +531,11 @@ enum MobileFixes {
       padding: 16px !important;
       margin: 0 !important;
     }
-    body.cmms-logged-in .right_side_cls a,
-    body.cmms-logged-in .right_side_cls label {
+    html.cmms-logged-in body .right_side_cls a,
+    html.cmms-logged-in body .right_side_cls label {
       color: #222 !important;
     }
-    body.cmms-logged-in .right_side_cls h5 {
+    html.cmms-logged-in body .right_side_cls h5 {
       color: #005bab !important;
       font-size: 14px !important;
       text-transform: uppercase !important;
@@ -595,19 +628,19 @@ enum MobileFixes {
     }
 
     /* Logged-in: kill the full-bleed watermark so it cannot sit across the black + blue bands */
-    body.cmms-logged-in #background_cycler,
-    body.cmms-logged-in #background_cycler img {
+    html.cmms-logged-in body #background_cycler,
+    html.cmms-logged-in body #background_cycler img {
       display: none !important;
       visibility: hidden !important;
     }
-    body.cmms-logged-in,
-    body.cmms-logged-in .bg-parent,
-    body.cmms-logged-in .bg-staff,
-    body.cmms-logged-in .bg-homepage,
-    body.cmms-logged-in .bg-parent-poral,
-    body.cmms-logged-in .bg-gray,
-    body.cmms-logged-in .header,
-    body.cmms-logged-in .wrap-pad {
+    html.cmms-logged-in body,
+    html.cmms-logged-in body .bg-parent,
+    html.cmms-logged-in body .bg-staff,
+    html.cmms-logged-in body .bg-homepage,
+    html.cmms-logged-in body .bg-parent-poral,
+    html.cmms-logged-in body .bg-gray,
+    html.cmms-logged-in body .header,
+    html.cmms-logged-in body .wrap-pad {
       background-image: none !important;
     }
 
@@ -620,15 +653,15 @@ enum MobileFixes {
       overflow: hidden !important;
       border: 0 !important;
     }
-    body.cmms-logged-in .header {
+    html.cmms-logged-in body .header {
       padding-top: 0 !important;
       min-height: 0 !important;
     }
     /* Header/parent switcher above Student Details (.dd1 is white-on-dark). */
-    body.cmms-logged-in .dd1,
-    body.cmms-logged-in .header .user-box,
-    body.cmms-logged-in .header .dropdown,
-    body.cmms-logged-in .header-right .dropdown {
+    html.cmms-logged-in body .dd1,
+    html.cmms-logged-in body .header .user-box,
+    html.cmms-logged-in body .header .dropdown,
+    html.cmms-logged-in body .header-right .dropdown {
       display: none !important;
     }
   `;
@@ -641,6 +674,8 @@ enum MobileFixes {
     (document.head || document.documentElement).appendChild(style);
   }
   style.textContent = css;
+  htmlEl.classList.remove("cmms-boot");
+  htmlEl.style.visibility = "";
 
   function isLoginPage() {
     return !!document.getElementById("frmtlogin") || /\/login\/?$/i.test(location.pathname);
@@ -758,9 +793,9 @@ enum MobileFixes {
 
   window.__cmmsApplySimpleMode = function (on) {
     window.__cmmsSimpleCheckIn = !!on;
-    if (!document.body) return;
-    if (on && /signin_out/i.test(location.pathname)) document.body.classList.add("cmms-checkin");
-    else document.body.classList.remove("cmms-checkin");
+    var onCheckIn = !!(on && /signin_out/i.test(location.pathname));
+    document.documentElement.classList.toggle("cmms-checkin", onCheckIn);
+    if (document.body) document.body.classList.toggle("cmms-checkin", onCheckIn);
   };
 
   window.__cmmsApplyClassroomCode = function (code) {
@@ -847,22 +882,46 @@ enum MobileFixes {
     }
   }
 
-  function stripBannerBackground() {
-    if (isLoginPage()) {
-      document.body.classList.remove("cmms-logged-in");
-      document.body.classList.remove("cmms-checkin");
+  function setPortalClasses(loggedIn) {
+    var html = document.documentElement;
+    if (!loggedIn) {
+      html.classList.remove("cmms-logged-in", "cmms-checkin");
+      if (document.body) document.body.classList.remove("cmms-logged-in", "cmms-checkin");
       return;
     }
-    document.body.classList.add("cmms-logged-in");
+    html.classList.add("cmms-logged-in");
+    if (document.body) document.body.classList.add("cmms-logged-in");
     if (typeof window.__cmmsSimpleCheckIn === "undefined") window.__cmmsSimpleCheckIn = true;
-    if (window.__cmmsSimpleCheckIn && /signin_out/i.test(location.pathname)) {
-      document.body.classList.add("cmms-checkin");
-    } else {
-      document.body.classList.remove("cmms-checkin");
+    var onCheckIn = !!(window.__cmmsSimpleCheckIn && /signin_out/i.test(location.pathname));
+    html.classList.toggle("cmms-checkin", onCheckIn);
+    if (document.body) document.body.classList.toggle("cmms-checkin", onCheckIn);
+  }
+
+  function stripBannerBackground() {
+    if (isLoginPage()) {
+      setPortalClasses(false);
+      return;
     }
+    setPortalClasses(true);
     var cycler = document.getElementById("background_cycler");
     if (cycler) cycler.style.display = "none";
     placeParentName();
+  }
+
+  function hookLogout() {
+    if (window.__cmmsLogoutHooked) return;
+    window.__cmmsLogoutHooked = true;
+    document.addEventListener("click", function (ev) {
+      var a = ev.target;
+      while (a && a.tagName !== "A") a = a.parentNode;
+      if (!a || !a.href) return;
+      var href = String(a.href);
+      var text = (a.textContent || "").replace(/\s+/g, " ").trim();
+      if (!/\/logout/i.test(href) && !/^log\s*out$/i.test(text)) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      postNative({ type: "logout" });
+    }, true);
   }
 
   function placeParentName() {
@@ -1037,6 +1096,7 @@ enum MobileFixes {
     buttonizeCheckboxes();
     enlargeTaps();
     hookLoginForm();
+    hookLogout();
     if (!isLoginPage() && window.__cmmsClassroomCode === undefined) {
       window.__cmmsClassroomCode = "";
       postNative({ type: "codeLoad", student: studentNameFromPage() });

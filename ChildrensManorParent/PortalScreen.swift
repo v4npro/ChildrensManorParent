@@ -111,7 +111,7 @@ struct PortalScreen: View {
 
             if model.showFaceIDButton {
                 Button {
-                    Task { await model.unlockWithFaceID() }
+                    model.signInWithSavedCredentials()
                 } label: {
                     Image(systemName: model.isAuthenticating ? "faceid" : "faceid")
                         .font(.body.weight(.semibold))
@@ -189,11 +189,11 @@ struct PortalScreen: View {
                     }
                     Button("Dashboard") {
                         model.showSettings = false
-                        model.webView?.load(URLRequest(url: URL(string: "https://portal.childrensmanor.com/tp/ur/dashboard")!))
+                        model.loadDashboard()
                     }
                     Button("Parent login") {
                         model.showSettings = false
-                        model.loadHome()
+                        model.signOutToLogin()
                     }
                 }
             }

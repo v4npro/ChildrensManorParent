@@ -5,6 +5,7 @@ import WebKit
 final class PortalModel: ObservableObject {
     static let startURL = URL(string: "https://portal.childrensmanor.com/tp/pa/login")!
     static let checkInURL = URL(string: "https://portal.childrensmanor.com/tp/ur/signin_out")!
+    static let dashboardURL = URL(string: "https://portal.childrensmanor.com/tp/ur/dashboard")!
 
     @Published var canGoBack = false
     @Published var canGoForward = false
@@ -27,6 +28,7 @@ final class PortalModel: ObservableObject {
     weak var webView: WKWebView?
     private var wasLoginPage = true
     private var didRedirectToCheckIn = false
+    private var suppressAutoFill = false
 
     func goBack() {
         webView?.goBack()
@@ -55,6 +57,64 @@ final class PortalModel: ObservableObject {
         webView?.load(URLRequest(url: Self.checkInURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 30))
     }
 
+    func loadDashboard() {
+        lastError = nil
+        webView?.load(URLRequest(url: Self.dashboardURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 30))
+    }
+
+    func signOutToLogin() {
+        suppressAutoFill = true
+        didRedirectToCheckIn = false
+        wasLoginPage = true
+        lastError = nil
+        let store = webView?.configuration.websiteDataStore ?? WKWebsiteDataStore.default()
+        let types: Set<String> = [
+            WKWebsiteDataTypeCookies,
+            WKWebsiteDataTypeLocalStorage,
+            WKWebsiteDataTypeSessionStorage,
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+        ]
+        store.fetchDataRecords(ofTypes: types) { records in
+            let portal = records.filter { rec in
+                let name = rec.displayName.lowercased()
+                return name.contains("childrensmanor") || name.contains("childrensmagnet")
+            }
+            store.removeData(ofTypes: types, for: portal) {
+                Task { @MainActor in
+                    self.webView?.load(
+                        URLRequest(
+                            url: Self.startURL,
+                            cachePolicy: .reloadIgnoringLocalCacheData,
+                            timeoutInterval: 30
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    func signInWithSavedCredentials() {
+        Task { await signInWithSavedCredentialsAsync() }
+    }
+
+    func clearAutoFillSuppression() {
+        suppressAutoFill = false
+    }
+
+    private func signInWithSavedCredentialsAsync() async {
+        if FaceIDAuth.canAuthenticate {
+            guard !isAuthenticating else { return }
+            isAuthenticating = true
+            let ok = await FaceIDAuth.authenticate(reason: "Sign in to the parent portal.")
+            isAuthenticating = false
+            guard ok else { return }
+        }
+        suppressAutoFill = false
+        guard let creds = FaceIDAuth.load() else { return }
+        fillLogin(username: creds.username, password: creds.password)
+    }
+
     func setStartOnCheckIn(_ value: Bool) {
         AppSettings.startOnCheckIn = value
         startOnCheckIn = value
@@ -75,6 +135,9 @@ final class PortalModel: ObservableObject {
         isLoading = webView.isLoading
         if let title = webView.title, !title.isEmpty {
             pageTitle = title
+        }
+        if (webView.url?.path.lowercased() ?? "").contains("logout") {
+            suppressAutoFill = true
         }
         let login = Self.isLogin(webView.url)
         isLoginPage = login
@@ -139,7 +202,7 @@ final class PortalModel: ObservableObject {
     }
 
     private func fillLoginIfNeeded() {
-        guard isLoginPage, let creds = FaceIDAuth.load() else { return }
+        guard !suppressAutoFill, isLoginPage, let creds = FaceIDAuth.load() else { return }
         fillLogin(username: creds.username, password: creds.password)
     }
 

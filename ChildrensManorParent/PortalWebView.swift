@@ -9,6 +9,11 @@ struct PortalWebView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> WKWebView {
+        let boot = WKUserScript(
+            source: "window.__cmmsSimpleCheckIn = \(AppSettings.startOnCheckIn ? "true" : "false");",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
         let js = WKUserScript(
             source: MobileFixes.javaScript,
             injectionTime: .atDocumentStart,
@@ -19,6 +24,7 @@ struct PortalWebView: UIViewRepresentable {
         config.defaultWebpagePreferences.preferredContentMode = .mobile
         config.allowsInlineMediaPlayback = true
         config.websiteDataStore = .default()
+        config.userContentController.addUserScript(boot)
         config.userContentController.addUserScript(js)
         config.userContentController.add(context.coordinator, name: "cmmsAuth")
 
@@ -64,6 +70,7 @@ struct PortalWebView: UIViewRepresentable {
             {
                 FaceIDAuth.save(username: username, password: password)
                 Task { @MainActor in
+                    model.clearAutoFillSuppression()
                     model.showFaceIDButton = FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate
                 }
                 return
@@ -81,6 +88,12 @@ struct PortalWebView: UIViewRepresentable {
                     .flatMap { String(data: $0, encoding: .utf8) }
                     .map { String($0.dropFirst().dropLast()) } ?? "\"\""
                 webView?.evaluateJavaScript("window.__cmmsApplyClassroomCode && window.__cmmsApplyClassroomCode(\(payload));", completionHandler: nil)
+                return
+            }
+            if type == "logout" {
+                Task { @MainActor in
+                    model.signOutToLogin()
+                }
             }
         }
 

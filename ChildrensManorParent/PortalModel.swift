@@ -20,6 +20,8 @@ final class PortalModel: ObservableObject {
     @Published var startOnCheckIn = AppSettings.startOnCheckIn
     @Published var isCheckInPage = false
     @Published var showSettings = false
+    @Published var saveLogin = AppSettings.saveLogin
+    @Published var lockDelaySeconds = AppSettings.lockDelaySeconds
 
     var shouldHideAppBar: Bool {
         startOnCheckIn && isCheckInPage && isUnlocked && !hidePortal
@@ -29,6 +31,11 @@ final class PortalModel: ObservableObject {
     private var wasLoginPage = true
     private var didRedirectToCheckIn = false
     private var suppressAutoFill = false
+    /// Typed on the login form; saved to the Keychain only after the portal accepts it.
+    private var pendingCredentials: (username: String, password: String)?
+    /// The app submitted the saved passcode and is waiting to see if it worked.
+    private var autoFillSubmitted = false
+    private var backgroundedAt: Date?
 
     func goBack() {
         webView?.goBack()
@@ -64,6 +71,7 @@ final class PortalModel: ObservableObject {
 
     func signOutToLogin() {
         suppressAutoFill = true
+        pendingCredentials = nil
         didRedirectToCheckIn = false
         wasLoginPage = true
         lastError = nil
@@ -98,8 +106,10 @@ final class PortalModel: ObservableObject {
         Task { await signInWithSavedCredentialsAsync() }
     }
 
-    func clearAutoFillSuppression() {
-        suppressAutoFill = false
+    func loginSubmitted(username: String, password: String) {
+        pendingCredentials = (username, password)
+        // The person is typing; don't race them with the saved passcode.
+        suppressAutoFill = true
     }
 
     private func signInWithSavedCredentialsAsync() async {
@@ -113,6 +123,25 @@ final class PortalModel: ObservableObject {
         suppressAutoFill = false
         guard let creds = FaceIDAuth.load() else { return }
         fillLogin(username: creds.username, password: creds.password)
+    }
+
+    func setSaveLogin(_ value: Bool) {
+        AppSettings.saveLogin = value
+        saveLogin = value
+        if !value {
+            FaceIDAuth.delete()
+            pendingCredentials = nil
+            refreshSavedLogin()
+        }
+    }
+
+    func setLockDelay(_ seconds: Int) {
+        AppSettings.lockDelaySeconds = seconds
+        lockDelaySeconds = seconds
+    }
+
+    private func refreshSavedLogin() {
+        showFaceIDButton = isLoginPage && FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate && isUnlocked
     }
 
     func setStartOnCheckIn(_ value: Bool) {
@@ -148,6 +177,7 @@ final class PortalModel: ObservableObject {
     func pageFinished(in webView: WKWebView) {
         sync(from: webView)
         applySimpleModeToPage()
+        handleSignInResult(url: webView.url)
         if isUnlocked {
             fillLoginIfNeeded()
         }
@@ -165,17 +195,43 @@ final class PortalModel: ObservableObject {
         wasLoginPage = nowLogin
     }
 
+    private func handleSignInResult(url: URL?) {
+        if isLoginPage {
+            // Back on the login page after the app sent the saved passcode:
+            // the portal turned it down, so stop sending it.
+            if autoFillSubmitted { suppressAutoFill = true }
+        } else if PortalHost.isFirstParty(url?.host) {
+            if let creds = pendingCredentials, AppSettings.saveLogin {
+                FaceIDAuth.save(username: creds.username, password: creds.password)
+                refreshSavedLogin()
+            }
+            pendingCredentials = nil
+            suppressAutoFill = false
+        }
+        autoFillSubmitted = false
+    }
+
     func coverForAppSwitch() {
         hidePortal = true
     }
 
     func lockForBackground() {
-        isUnlocked = false
         hidePortal = true
         isAuthenticating = false
+        if lockDelaySeconds > 0, isUnlocked {
+            backgroundedAt = backgroundedAt ?? Date()
+        } else {
+            isUnlocked = false
+        }
     }
 
     func handleBecameActive() async {
+        if let since = backgroundedAt {
+            backgroundedAt = nil
+            if Date().timeIntervalSince(since) >= TimeInterval(lockDelaySeconds) {
+                isUnlocked = false
+            }
+        }
         hidePortal = !isUnlocked
         if isUnlocked { return }
         await unlockWithFaceID()
@@ -207,16 +263,22 @@ final class PortalModel: ObservableObject {
     }
 
     private func fillLogin(username: String, password: String) {
-        guard let webView else { return }
+        guard let webView, webView.url?.host?.lowercased() == PortalHost.login else { return }
+        pendingCredentials = nil
         let payload: [String] = [username, password]
         guard let data = try? JSONSerialization.data(withJSONObject: payload),
               let json = String(data: data, encoding: .utf8)
         else { return }
         let js = "\(MobileFixes.fillLoginJavaScript)(\(json.dropFirst().dropLast()));"
         webView.evaluateJavaScript(js) { result, _ in
-            if (result as? Bool) != true {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    webView.evaluateJavaScript(js, completionHandler: nil)
+            if (result as? Bool) == true {
+                Task { @MainActor in self.autoFillSubmitted = true }
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                webView.evaluateJavaScript(js) { result, _ in
+                    guard (result as? Bool) == true else { return }
+                    Task { @MainActor in self.autoFillSubmitted = true }
                 }
             }
         }
@@ -229,5 +291,18 @@ final class PortalModel: ObservableObject {
 
     static func isCheckIn(_ url: URL?) -> Bool {
         (url?.path.lowercased() ?? "").contains("signin_out")
+    }
+}
+
+/// Hosts the app treats as the school's own site.
+enum PortalHost {
+    static let login = "portal.childrensmanor.com"
+
+    static func isFirstParty(_ host: String?) -> Bool {
+        guard let h = host?.lowercased() else { return false }
+        return h == "childrensmanor.com"
+            || h.hasSuffix(".childrensmanor.com")
+            || h == "childrensmagnet.com"
+            || h.hasSuffix(".childrensmagnet.com")
     }
 }

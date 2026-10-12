@@ -5,6 +5,8 @@ enum MobileFixes {
     /// without posting credentials anywhere except the school's own origin.
     static let javaScript = #"""
 (function () {
+  // Only restyle the school's own pages; Google Calendar and others load as-is.
+  if (!/(^|\.)childrens(manor|magnet)\.com$/i.test(location.hostname)) return;
   var htmlEl = document.documentElement;
   var firstPaint = !document.getElementById("cmms-mobile-fixes");
   if (firstPaint) {
@@ -16,6 +18,14 @@ enum MobileFixes {
   if (!isLogin0) htmlEl.classList.add("cmms-logged-in");
   else htmlEl.classList.remove("cmms-logged-in", "cmms-checkin");
   if (window.__cmmsSimpleCheckIn && /signin_out/i.test(path0)) htmlEl.classList.add("cmms-checkin");
+  // Keep the original check-in checkboxes hidden while the HTML streams in;
+  // after that only the ones replaced by circle buttons stay hidden.
+  if (document.readyState === "loading") {
+    htmlEl.classList.add("cmms-parsing");
+    document.addEventListener("DOMContentLoaded", function () {
+      htmlEl.classList.remove("cmms-parsing");
+    });
+  }
 
   var css = `
     html { -webkit-text-size-adjust: 100%; background: #005bab; }
@@ -409,7 +419,8 @@ enum MobileFixes {
       display: none !important;
     }
 
-    html.cmms-logged-in body #no-more-tables input[type="checkbox"] {
+    html.cmms-logged-in body #no-more-tables input[type="checkbox"][data-cmms-btn],
+    html.cmms-logged-in.cmms-parsing body #no-more-tables input[type="checkbox"] {
       position: absolute !important;
       opacity: 0 !important;
       width: 1px !important;
@@ -926,7 +937,7 @@ enum MobileFixes {
 
   function placeParentName() {
     var existing = document.getElementById("cmms-parent-name");
-    if (!document.body.classList.contains("cmms-checkin")) {
+    if (!document.documentElement.classList.contains("cmms-checkin")) {
       if (existing) existing.style.display = "none";
       return;
     }
@@ -1041,7 +1052,6 @@ enum MobileFixes {
     for (var i = 0; i < boxes.length; i++) {
       var cb = boxes[i];
       if (cb.getAttribute("data-cmms-btn")) continue;
-      cb.setAttribute("data-cmms-btn", "1");
       var info = checkboxKind(cb);
       var btn = document.createElement("button");
       btn.type = "button";
@@ -1057,10 +1067,13 @@ enum MobileFixes {
           ev.stopPropagation();
           checkbox.click();
           syncChkButton(checkbox, button);
+          postNative({ type: "haptic" });
         });
       })(cb, btn);
       var host = cb.parentNode || root;
       host.appendChild(btn);
+      // Marking it hides the original checkbox, so only do that once its button is in place.
+      cb.setAttribute("data-cmms-btn", "1");
     }
     groupCircleButtons(root);
   }
@@ -1073,34 +1086,44 @@ enum MobileFixes {
       var user = document.getElementById("username");
       var pass = document.getElementById("password");
       if (!user || !pass) return;
-      try {
-        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cmmsAuth) {
-          window.webkit.messageHandlers.cmmsAuth.postMessage({
-            type: "save",
-            username: user.value || "",
-            password: pass.value || ""
-          });
-        }
-      } catch (e) {}
+      // The app saves these only once the next page shows the sign-in worked.
+      postNative({
+        type: "loginSubmitted",
+        username: user.value || "",
+        password: pass.value || ""
+      });
     });
   }
 
+  function requestClassroomCode() {
+    if (isLoginPage()) return;
+    var student = studentNameFromPage();
+    if (window.__cmmsCodeStudent === student) return;
+    window.__cmmsCodeStudent = student;
+    if (window.__cmmsClassroomCode === undefined) window.__cmmsClassroomCode = "";
+    postNative({ type: "codeLoad", student: student });
+  }
+
+  // One broken step must not stop the rest, or Check In loses its buttons.
+  function safely(step) {
+    try { step(); } catch (e) {}
+  }
+
   function run() {
-    ensureViewport();
-    hideTopUserDropdown();
-    stripBannerBackground();
-    shortenTabLabels();
-    forceHorizontalTabs();
-    groupShortcutButtons();
-    ensureCodeRow();
-    buttonizeCheckboxes();
-    enlargeTaps();
-    hookLoginForm();
-    hookLogout();
-    if (!isLoginPage() && window.__cmmsClassroomCode === undefined) {
-      window.__cmmsClassroomCode = "";
-      postNative({ type: "codeLoad", student: studentNameFromPage() });
-    }
+    safely(ensureViewport);
+    // Rewrite the page once its HTML is complete, so table rows are whole.
+    if (document.readyState === "loading") return;
+    safely(hideTopUserDropdown);
+    safely(stripBannerBackground);
+    safely(shortenTabLabels);
+    safely(forceHorizontalTabs);
+    safely(groupShortcutButtons);
+    safely(ensureCodeRow);
+    safely(buttonizeCheckboxes);
+    safely(enlargeTaps);
+    safely(hookLoginForm);
+    safely(hookLogout);
+    safely(requestClassroomCode);
   }
 
   run();
@@ -1122,6 +1145,7 @@ enum MobileFixes {
 
     static let fillLoginJavaScript = #"""
 (function (u, p) {
+  if (location.hostname !== "portal.childrensmanor.com") return false;
   var user = document.getElementById("username");
   var pass = document.getElementById("password");
   var form = document.getElementById("frmtlogin");

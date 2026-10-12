@@ -182,6 +182,26 @@ struct PortalScreen: View {
                         set: { model.setStartOnCheckIn($0) }
                     ))
                 }
+                Section {
+                    Toggle("Sign in with Face ID", isOn: Binding(
+                        get: { model.saveLogin },
+                        set: { model.setSaveLogin($0) }
+                    ))
+                    Picker("Require Face ID", selection: Binding(
+                        get: { model.lockDelaySeconds },
+                        set: { model.setLockDelay($0) }
+                    )) {
+                        Text("Immediately").tag(0)
+                        Text("After 1 minute").tag(60)
+                        Text("After 5 minutes").tag(300)
+                    }
+                } header: {
+                    Text("Face ID")
+                } footer: {
+                    Text(model.saveLogin
+                        ? "Your school passcode is saved in this iPhone’s Keychain after a successful sign-in. Turning this off deletes it."
+                        : "Your school passcode is not saved. You’ll type it each time you sign in.")
+                }
                 Section("Go to") {
                     Button("Check In / Out") {
                         model.showSettings = false
@@ -191,7 +211,9 @@ struct PortalScreen: View {
                         model.showSettings = false
                         model.loadDashboard()
                     }
-                    Button("Parent login") {
+                }
+                Section {
+                    Button("Sign out", role: .destructive) {
                         model.showSettings = false
                         model.signOutToLogin()
                     }

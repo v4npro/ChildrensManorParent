@@ -3,16 +3,16 @@ import Foundation
 enum ClassroomCodeStore {
     private static let fallbackKey = "cmms.classroomCode"
 
+    /// Each child keeps their own code, so a sibling's code never shows up
+    /// under the wrong name. The shared key is only used when the page
+    /// does not show a student name.
     static func get(student: String?) -> String {
-        let specific = UserDefaults.standard.string(forKey: key(for: student)) ?? ""
-        if !specific.isEmpty { return specific }
-        return UserDefaults.standard.string(forKey: fallbackKey) ?? ""
+        UserDefaults.standard.string(forKey: key(for: student)) ?? ""
     }
 
     static func set(_ value: String, student: String?) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         UserDefaults.standard.set(trimmed, forKey: key(for: student))
-        UserDefaults.standard.set(trimmed, forKey: fallbackKey)
     }
 
     private static func key(for student: String?) -> String {

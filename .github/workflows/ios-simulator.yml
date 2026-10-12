@@ -9,6 +9,11 @@ on:
       - "ChildrensManorParent/**"
       - "ChildrensManorParent.xcodeproj/**"
       - ".github/workflows/ios-simulator.yml"
+  pull_request:
+    paths:
+      - "ChildrensManorParent/**"
+      - "ChildrensManorParent.xcodeproj/**"
+      - ".github/workflows/ios-simulator.yml"
 
 jobs:
   build:

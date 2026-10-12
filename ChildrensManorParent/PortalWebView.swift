@@ -60,18 +60,26 @@ struct PortalWebView: UIViewRepresentable {
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            // Only the school's own page (not Google or an embedded frame) may
+            // hand over a passcode or sign the app out.
             guard message.name == "cmmsAuth",
+                  message.frameInfo.isMainFrame,
+                  PortalHost.isFirstParty(message.frameInfo.securityOrigin.host),
                   let body = message.body as? [String: Any],
                   let type = body["type"] as? String
             else { return }
-            if type == "save",
+            if type == "loginSubmitted",
                let username = body["username"] as? String,
                let password = body["password"] as? String
             {
-                FaceIDAuth.save(username: username, password: password)
                 Task { @MainActor in
-                    model.clearAutoFillSuppression()
-                    model.showFaceIDButton = FaceIDAuth.hasCredentials && FaceIDAuth.canAuthenticate
+                    model.loginSubmitted(username: username, password: password)
+                }
+                return
+            }
+            if type == "haptic" {
+                Task { @MainActor in
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 }
                 return
             }
@@ -99,7 +107,8 @@ struct PortalWebView: UIViewRepresentable {
 
         @objc func pullToRefresh(_ control: UIRefreshControl) {
             webView?.reload()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            // didFinish/didFail end it; this covers a reload that never starts.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
                 control.endRefreshing()
             }
         }
@@ -107,13 +116,17 @@ struct PortalWebView: UIViewRepresentable {
         private func allowedHost(_ host: String?) -> Bool {
             guard let host else { return false }
             let h = host.lowercased()
-            return h == "portal.childrensmanor.com"
-                || h.hasSuffix(".childrensmanor.com")
-                || h == "childrensmanor.com"
-                || h == "childrensmagnet.com"
-                || h.hasSuffix(".childrensmagnet.com")
+            return PortalHost.isFirstParty(h)
                 || h == "calendar.google.com"
                 || h.hasSuffix(".google.com")
+        }
+
+        /// A load that was stopped on purpose (a new page started, or the
+        /// link opened in Safari) is not something to show as an error.
+        private func isCancellation(_ error: Error) -> Bool {
+            let ns = error as NSError
+            return (ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled)
+                || (ns.domain == "WebKitErrorDomain" && ns.code == 102) // frame load interrupted
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -124,6 +137,7 @@ struct PortalWebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            webView.scrollView.refreshControl?.endRefreshing()
             webView.evaluateJavaScript(MobileFixes.javaScript, completionHandler: nil)
             Task { @MainActor in
                 model.isLoading = false
@@ -132,18 +146,20 @@ struct PortalWebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            webView.scrollView.refreshControl?.endRefreshing()
+            let message = isCancellation(error) ? nil : error.localizedDescription
             Task { @MainActor in
-                model.isLoading = false
-                model.lastError = error.localizedDescription
+                model.isLoading = webView.isLoading
+                if let message { model.lastError = message }
             }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            let ns = error as NSError
-            if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled { return }
+            webView.scrollView.refreshControl?.endRefreshing()
+            let message = isCancellation(error) ? nil : error.localizedDescription
             Task { @MainActor in
-                model.isLoading = false
-                model.lastError = error.localizedDescription
+                model.isLoading = webView.isLoading
+                if let message { model.lastError = message }
             }
         }
 
@@ -187,6 +203,38 @@ struct PortalWebView: UIViewRepresentable {
                 }
             }
             return nil
+        }
+
+        // Without these, the portal's alert() does nothing and confirm()
+        // silently answers "Cancel", so actions that ask first never happen.
+        func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+            if !present(alert, over: webView) { completionHandler() }
+        }
+
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+            if !present(alert, over: webView) { completionHandler(false) }
+        }
+
+        func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
+            let alert = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
+            alert.addTextField { $0.text = defaultText }
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(nil) })
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak alert] _ in
+                completionHandler(alert?.textFields?.first?.text)
+            })
+            if !present(alert, over: webView) { completionHandler(nil) }
+        }
+
+        private func present(_ alert: UIAlertController, over webView: WKWebView) -> Bool {
+            guard var top = webView.window?.rootViewController else { return false }
+            while let next = top.presentedViewController { top = next }
+            top.present(alert, animated: true)
+            return true
         }
     }
 }

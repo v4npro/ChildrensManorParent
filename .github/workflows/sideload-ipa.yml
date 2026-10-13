@@ -1,0 +1,63 @@
+# Build an unsigned Manor Parent .ipa for sideloading (AltStore, SideStore,
+# Sideloadly, etc.). No Apple secrets: the sideloading tool re-signs the app
+# with your own Apple ID when it installs it.
+#
+# Download: Actions → this run → Artifacts → ManorParent-unsigned-ipa.
+name: Sideload IPA (unsigned)
+
+on:
+  workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: "Version shown on the phone"
+        required: false
+        default: "0.1.0"
+  push:
+    paths:
+      - ".github/workflows/sideload-ipa.yml"
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Build (device, no signing)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project ChildrensManorParent.xcodeproj \
+            -scheme ChildrensManorParent \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            MARKETING_VERSION="${{ inputs.marketing_version || '0.1.0' }}" \
+            build
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/ChildrensManorParent.app"
+          test -d "$APP"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          cd "$RUNNER_TEMP/ipa"
+          zip -qry ManorParent-unsigned.ipa Payload
+          ls -la ManorParent-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ManorParent-unsigned-ipa
+          path: ${{ runner.temp }}/ipa/ManorParent-unsigned.ipa
+          retention-days: 14
+          if-no-files-found: error

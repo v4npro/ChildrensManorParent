@@ -29,6 +29,12 @@ Private repo: https://github.com/v4npro/ChildrensManorParent
 
 Unsigned compile check: Actions → **iOS Simulator build**.
 
+## Install by sideloading (.ipa)
+
+1. GitHub **Actions → Sideload IPA (unsigned) → Run workflow**.
+2. When it finishes, download **ManorParent-unsigned-ipa** from the run’s Artifacts and unzip it to get `ManorParent-unsigned.ipa`.
+3. Install it with AltStore, SideStore or Sideloadly, which re-sign it with your Apple ID. With a free Apple ID the app expires after 7 days and must be refreshed.
+
 ## Open on a Mac
 
 1. Clone this repo (or pull if you already have it).
